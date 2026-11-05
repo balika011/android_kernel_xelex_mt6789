@@ -1,3 +1,0 @@
-config AW95016
-	tristate "Support for AW95016"
-	depends on I2C && LEDS_CLASS
