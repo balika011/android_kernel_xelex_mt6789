@@ -545,7 +545,7 @@ exit:
 
 static int pca953x_gpio_set_pull_up_down(struct pca953x_chip *chip,
 					 unsigned int offset,
-					 unsigned long config)
+					 enum pin_config_param config)
 {
 	u8 pull_en_reg = pca953x_recalc_addr(chip, PCAL953X_PULL_EN, offset);
 	u8 pull_sel_reg = pca953x_recalc_addr(chip, PCAL953X_PULL_SEL, offset);
@@ -586,13 +586,14 @@ static int pca953x_gpio_set_config(struct gpio_chip *gc, unsigned int offset,
 				   unsigned long config)
 {
 	struct pca953x_chip *chip = gpiochip_get_data(gc);
+	enum pin_config_param conf = pinconf_to_config_param(config);
 
-	switch (pinconf_to_config_param(config)) {
+	switch (conf) {
 	case PIN_CONFIG_BIAS_PULL_UP:
 	case PIN_CONFIG_BIAS_PULL_PIN_DEFAULT:
 	case PIN_CONFIG_BIAS_PULL_DOWN:
 	case PIN_CONFIG_BIAS_DISABLE:
-		return pca953x_gpio_set_pull_up_down(chip, offset, config);
+		return pca953x_gpio_set_pull_up_down(chip, offset, conf);
 	default:
 		return -ENOTSUPP;
 	}
