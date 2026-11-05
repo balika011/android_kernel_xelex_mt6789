@@ -466,9 +466,9 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 
 	input_dev->name = "mtk-pmic-keys";
 	input_dev->id.bustype = BUS_HOST;
-	input_dev->id.vendor = 0x0001;
-	input_dev->id.product = 0x0001;
-	input_dev->id.version = 0x0001;
+	input_dev->id.vendor = 0x0000;
+	input_dev->id.product = 0x0000;
+	input_dev->id.version = 0x0000;
 
 	__set_bit(EV_KEY, input_dev->evbit);
 	keycount = of_get_available_child_count(node);
