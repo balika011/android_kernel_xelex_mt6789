@@ -624,6 +624,32 @@ static void pca953x_setup_gpio(struct pca953x_chip *chip, int gpios)
 }
 
 #ifdef CONFIG_GPIO_PCA953X_IRQ
+static void pca953x_update_irq_mask(struct pca953x_chip *chip)
+{
+	DECLARE_BITMAP(irq_mask, MAX_LINE);
+	DECLARE_BITMAP(cur_stat, MAX_LINE);
+
+	int in_latch_reg = (chip->driver_data & PCA_AW) ? AW95016A_IN_LATCH :
+							  PCAL953x_IN_LATCH;
+
+	int int_mask_reg = (chip->driver_data & PCA_AW) ? AW95016A_INT_MASK :
+							  PCAL953x_INT_MASK;
+
+	if (!(chip->driver_data & (PCA_PCAL | PCA_AW)))
+		return;
+
+	/* Enable latch on interrupt-enabled inputs */
+	pca953x_write_regs(chip, in_latch_reg, chip->irq_mask);
+
+	bitmap_complement(irq_mask, chip->irq_mask, chip->gpio_chip.ngpio);
+
+	/* Unmask enabled interrupts */
+	pca953x_write_regs(chip, int_mask_reg, irq_mask);
+
+	/* Clear interrupt status */
+	pca953x_read_regs(chip, chip->regs->input, cur_stat);
+}
+
 static void pca953x_irq_mask(struct irq_data *d)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
@@ -631,6 +657,8 @@ static void pca953x_irq_mask(struct irq_data *d)
 	irq_hw_number_t hwirq = irqd_to_hwirq(d);
 
 	clear_bit(hwirq, chip->irq_mask);
+
+	pca953x_update_irq_mask(chip);
 }
 
 static void pca953x_irq_unmask(struct irq_data *d)
@@ -640,6 +668,8 @@ static void pca953x_irq_unmask(struct irq_data *d)
 	irq_hw_number_t hwirq = irqd_to_hwirq(d);
 
 	set_bit(hwirq, chip->irq_mask);
+
+	pca953x_update_irq_mask(chip);
 }
 
 static int pca953x_irq_set_wake(struct irq_data *d, unsigned int on)
@@ -670,16 +700,6 @@ static void pca953x_irq_bus_sync_unlock(struct irq_data *d)
 	DECLARE_BITMAP(irq_mask, MAX_LINE);
 	DECLARE_BITMAP(reg_direction, MAX_LINE);
 	int level;
-
-	if (chip->driver_data & PCA_PCAL) {
-		/* Enable latch on interrupt-enabled inputs */
-		pca953x_write_regs(chip, PCAL953X_IN_LATCH, chip->irq_mask);
-
-		bitmap_complement(irq_mask, chip->irq_mask, gc->ngpio);
-
-		/* Unmask enabled interrupts */
-		pca953x_write_regs(chip, PCAL953X_INT_MASK, irq_mask);
-	}
 
 	/* Switch direction to input if needed */
 	pca953x_read_regs(chip, chip->regs->direction, reg_direction);
@@ -783,6 +803,7 @@ static irqreturn_t pca953x_irq_handler(int irq, void *devid)
 	struct pca953x_chip *chip = devid;
 	struct gpio_chip *gc = &chip->gpio_chip;
 	DECLARE_BITMAP(pending, MAX_LINE);
+	DECLARE_BITMAP(irq_mask, MAX_LINE);
 	int level;
 	bool ret;
 
@@ -795,6 +816,15 @@ static irqreturn_t pca953x_irq_handler(int irq, void *devid)
 	if (ret) {
 		ret = 0;
 
+		/*
+		 * Workaround:
+		 * Disable all IRQs during IRQ handling due to
+		 * IRQF_ONESHOT being ignored by handle_nested_irq.
+		 */
+		bitmap_copy(irq_mask, chip->irq_mask, MAX_LINE);
+		bitmap_zero(chip->irq_mask, MAX_LINE);
+		pca953x_update_irq_mask(chip);
+
 		for_each_set_bit(level, pending, gc->ngpio) {
 			int nested_irq = irq_find_mapping(gc->irq.domain, level);
 
@@ -806,6 +836,9 @@ static irqreturn_t pca953x_irq_handler(int irq, void *devid)
 			handle_nested_irq(nested_irq);
 			ret = 1;
 		}
+
+		bitmap_copy(chip->irq_mask, irq_mask, MAX_LINE);
+		pca953x_update_irq_mask(chip);
 	}
 
 	return IRQ_RETVAL(ret);
