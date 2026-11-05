@@ -266,14 +266,14 @@ static bool pca953x_check_register(struct pca953x_chip *chip, unsigned int reg,
 				   u32 checkbank)
 {
 	int bank_shift = pca953x_bank_shift(chip);
-	int bank = (reg & REG_ADDR_MASK) >> bank_shift;
+	int bank = reg >> bank_shift;
 	int offset = reg & (BIT(bank_shift) - 1);
 
 	/* Special PCAL extended register check. */
-	if (reg & REG_ADDR_EXT) {
-		if (!(chip->driver_data & PCA_PCAL))
-			return false;
-		bank += 8;
+	if (chip->driver_data & PCA_PCAL) {
+		bank = (reg & REG_ADDR_MASK) >> bank_shift;
+		if (reg & REG_ADDR_EXT)
+			bank += 8;
 	}
 
 	/* Register is not in the matching bank. */
