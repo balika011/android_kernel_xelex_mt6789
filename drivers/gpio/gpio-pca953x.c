@@ -42,13 +42,13 @@
 #define PCA957X_MSK		0x06
 #define PCA957X_INTS		0x07
 
-#define PCAL953X_OUT_STRENGTH	0x20
-#define PCAL953X_IN_LATCH	0x22
-#define PCAL953X_PULL_EN	0x23
-#define PCAL953X_PULL_SEL	0x24
-#define PCAL953X_INT_MASK	0x25
-#define PCAL953X_INT_STAT	0x26
-#define PCAL953X_OUT_CONF	0x27
+#define PCAL953x_OUT_STRENGTH	0x20
+#define PCAL953x_IN_LATCH	0x22
+#define PCAL953x_PULL_EN	0x23
+#define PCAL953x_PULL_SEL	0x24
+#define PCAL953x_INT_MASK	0x25
+#define PCAL953x_INT_STAT	0x26
+#define PCAL953x_OUT_CONF	0x27
 
 #define PCAL6524_INT_EDGE	0x28
 #define PCAL6524_INT_CLR	0x2a
@@ -228,11 +228,11 @@ static int pca953x_bank_shift(struct pca953x_chip *chip)
 #define PCA957x_BANK_CONFIG	BIT(4)
 #define PCA957x_BANK_OUTPUT	BIT(5)
 
-#define PCAL9xxx_BANK_IN_LATCH	BIT(8 + 2)
-#define PCAL9xxx_BANK_PULL_EN	BIT(8 + 3)
-#define PCAL9xxx_BANK_PULL_SEL	BIT(8 + 4)
-#define PCAL9xxx_BANK_IRQ_MASK	BIT(8 + 5)
-#define PCAL9xxx_BANK_IRQ_STAT	BIT(8 + 6)
+#define PCAL953x_BANK_IN_LATCH	BIT(8 + 2)
+#define PCAL953x_BANK_PULL_EN	BIT(8 + 3)
+#define PCAL953x_BANK_PULL_SEL	BIT(8 + 4)
+#define PCAL953x_BANK_IRQ_MASK	BIT(8 + 5)
+#define PCAL953x_BANK_IRQ_STAT	BIT(8 + 6)
 
 /*
  * We care about the following registers:
@@ -302,9 +302,9 @@ static bool pca953x_readable_register(struct device *dev, unsigned int reg)
 	}
 
 	if (chip->driver_data & PCA_PCAL) {
-		bank |= PCAL9xxx_BANK_IN_LATCH | PCAL9xxx_BANK_PULL_EN |
-			PCAL9xxx_BANK_PULL_SEL | PCAL9xxx_BANK_IRQ_MASK |
-			PCAL9xxx_BANK_IRQ_STAT;
+		bank |= PCAL953x_BANK_IN_LATCH | PCAL953x_BANK_PULL_EN |
+			PCAL953x_BANK_PULL_SEL | PCAL953x_BANK_IRQ_MASK |
+			PCAL953x_BANK_IRQ_STAT;
 	}
 
 	return pca953x_check_register(chip, reg, bank);
@@ -324,8 +324,8 @@ static bool pca953x_writeable_register(struct device *dev, unsigned int reg)
 	}
 
 	if (chip->driver_data & PCA_PCAL)
-		bank |= PCAL9xxx_BANK_IN_LATCH | PCAL9xxx_BANK_PULL_EN |
-			PCAL9xxx_BANK_PULL_SEL | PCAL9xxx_BANK_IRQ_MASK;
+		bank |= PCAL953x_BANK_IN_LATCH | PCAL953x_BANK_PULL_EN |
+			PCAL953x_BANK_PULL_SEL | PCAL953x_BANK_IRQ_MASK;
 
 	return pca953x_check_register(chip, reg, bank);
 }
@@ -341,7 +341,7 @@ static bool pca953x_volatile_register(struct device *dev, unsigned int reg)
 		bank = PCA957x_BANK_INPUT;
 
 	if (chip->driver_data & PCA_PCAL)
-		bank |= PCAL9xxx_BANK_IRQ_STAT;
+		bank |= PCAL953x_BANK_IRQ_STAT;
 
 	return pca953x_check_register(chip, reg, bank);
 }
@@ -734,7 +734,7 @@ static bool pca953x_irq_pending(struct pca953x_chip *chip, unsigned long *pendin
 
 	if (chip->driver_data & PCA_PCAL) {
 		/* Read the current interrupt status from the device */
-		ret = pca953x_read_regs(chip, PCAL953X_INT_STAT, trigger);
+		ret = pca953x_read_regs(chip, PCAL953x_INT_STAT, trigger);
 		if (ret)
 			return false;
 
@@ -1135,7 +1135,7 @@ static int pca953x_regcache_sync(struct device *dev)
 
 #ifdef CONFIG_GPIO_PCA953X_IRQ
 	if (chip->driver_data & PCA_PCAL) {
-		regaddr = pca953x_recalc_addr(chip, PCAL953X_IN_LATCH, 0);
+		regaddr = pca953x_recalc_addr(chip, PCAL953x_IN_LATCH, 0);
 		ret = regcache_sync_region(chip->regmap, regaddr,
 					   regaddr + NBANK(chip) - 1);
 		if (ret) {
@@ -1144,7 +1144,7 @@ static int pca953x_regcache_sync(struct device *dev)
 			return ret;
 		}
 
-		regaddr = pca953x_recalc_addr(chip, PCAL953X_INT_MASK, 0);
+		regaddr = pca953x_recalc_addr(chip, PCAL953x_INT_MASK, 0);
 		ret = regcache_sync_region(chip->regmap, regaddr,
 					   regaddr + NBANK(chip) - 1);
 		if (ret) {
