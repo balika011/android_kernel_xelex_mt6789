@@ -53,6 +53,12 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 	else
 		bdata->irq_on_state = value;
 
+	retval = of_property_read_u32(np, "synaptics,irq-flags", &value);
+	if (retval < 0)
+		return retval;
+	else
+		bdata->irq_flags = value;
+
 	if (of_find_property(np, "synaptics,pwr-reg-name", NULL)) {
 		retval = of_property_read_string(np, "synaptics,pwr-reg-name", &bdata->pwr_reg_name);
 		if (retval < 0)
@@ -391,8 +397,6 @@ static int synaptics_rmi4_i2c_probe(struct i2c_client *client,
 				"%s: Failed to register platform device\n",
 				__func__);
 		return -ENODEV;
-	} else {
-		dev_err(&client->dev,"%s: sucess to register platform device\n",__func__);
 	}
 
 #ifdef CONFIG_PM_RUNTIME
@@ -443,7 +447,7 @@ MODULE_DEVICE_TABLE(i2c, synaptics_rmi4_id_table);
 #ifdef CONFIG_OF
 static struct of_device_id synaptics_rmi4_of_match_table[] = {
 	{
-		.compatible = "mediatek,cap_touch_synaptics",
+		.compatible = "synaptics,dsx",
 	},
 	{},
 };

@@ -375,10 +375,6 @@ struct synaptics_rmi4_data {
 
 	struct work_struct irq_work;
 	bool   ignore_touch;
-	/* slots reported as down in the previous F12 interrupt;
-	 * used to send the missing up event when a lifted finger
-	 * was the highest active slot */
-	unsigned long f12_active_slots;
 };
 
 struct synaptics_dsx_bus_access {

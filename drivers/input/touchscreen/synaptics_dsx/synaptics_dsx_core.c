@@ -16,34 +16,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-
-/*
-
-ctp {
-                        compatible = "synaptics,dsx";
-                        reg = <0x67>;
-                        device_type = "ctp";
-                        status = "okay";
-                        ctp_twi_id = <0x1>;
-                        ctp_twi_addr = <0x67>;
-                        vdd-supply = <&reg_ldoio0>;
-                        synaptics,pwr-reg-name = "vdd";
-                        synaptics,input-device-name = "touch_display";
-                        synaptics,irq-gpio = <&pio PH 18 6 0xffffffff 0xffffffff 0>;
-                        synaptics,irq-flags = <0x2008>; //IRQF_TRIGGER_LOW | IRQF_ONESHOT
-                        synaptics,reset-gpio = <&pio PH 19 1 0xffffffff 0xffffffff 1>;
-                        synaptics,reset-on-state = <0>;
-                        synaptics,reset-delay-ms = <60>;
-                        synaptics,reset-active-ms = <200>;
-                        synaptics,firmware = "synaptics/passport_display.bin";
-                        ctp_screen_max_x = <720>;
-                        ctp_screen_max_y = <720>;
-                        ctp_revert_x_flag = <0>;
-                        ctp_revert_y_flag = <0>;
-                        ctp_exchange_x_y_flag = <0>;
-                    };
-
-*/
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -57,14 +29,10 @@ ctp {
 #include "synaptics_dsx_core.h"
 #include <linux/input/mt.h>
 
-#include "tpd.h"
 #include "synaptics_dsx_core.h"
 #include "synaptics_dsx_fw_update.h"
-#include <linux/regulator/consumer.h>
 
-static struct synaptics_rmi4_data *g_rmi4_data;
-
-#define INPUT_PHYS_NAME "synaptics_dsx/touch_input_display"
+#define INPUT_PHYS_NAME "synaptics_dsx/touch_input"
 // #define REPORT_2D_Z
 #define REPORT_2D_W
 
@@ -439,18 +407,6 @@ static struct device_attribute attrs[] = {
 			synaptics_rmi4_suspend_store),
 };
 
-static void enable_modem_power(int enable)
-{
-        struct regulator* set_ldo = NULL;
-        set_ldo = regulator_get(NULL, "axp803-ldoio0");
-        regulator_set_voltage(set_ldo,3300000,3300000);
-        if(enable){
-                regulator_enable(set_ldo);
-        }else{
-                regulator_disable(set_ldo);
-        }
-}
-
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -710,7 +666,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int wy;
 #endif
 	int temp;
-	unsigned long stale_slots;
 	struct synaptics_rmi4_f12_extra_data *extra_data;
 	struct synaptics_rmi4_f12_finger_data *data;
 
@@ -796,11 +751,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 	mutex_lock(&(rmi4_data->rmi4_report_mutex));
 
-	/* Snapshot the slots that were down last interrupt; the loop below
-	 * rebuilds f12_active_slots with the slots down this interrupt. */
-	stale_slots = rmi4_data->f12_active_slots;
-	rmi4_data->f12_active_slots = 0;
-
 	touch_count = 0;
 	for (finger = 0; finger < fingers_to_process; finger++) {
 		struct synaptics_rmi4_f12_finger_data *finger_data = data + finger;
@@ -815,7 +765,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			input_mt_slot(rmi4_data->input_dev, finger);
 			input_mt_report_slot_state(rmi4_data->input_dev,
 					MT_TOOL_FINGER, 1);
-			rmi4_data->f12_active_slots |= (1UL << finger);
 
 			x = (finger_data->x_msb << 8) | (finger_data->x_lsb);
 			y = (finger_data->y_msb << 8) | (finger_data->y_lsb);
@@ -880,33 +829,11 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					BTN_TOUCH, 0);
 			input_mt_report_slot_state(rmi4_data->input_dev,
 					MT_TOOL_FINGER, 0);
-			stale_slots &= ~(1UL << finger);
 			dev_dbg(rmi4_data->pdev->dev.parent,
 				"%s: Finger release f=%d, I=%d,S=%d\n",
 				__func__, fingers_to_process, finger, finger_status);
 			break;
 		}
-	}
-
-	/*
-	 * Finger records are reported packed from record 0 and
-	 * fingers_to_process is capped at the highest present record, so a
-	 * slot that was down in a previous interrupt but sits above the
-	 * highest present record this time never gets its release from the
-	 * loop. Send the missing up here.
-	 */
-	stale_slots &= ~rmi4_data->f12_active_slots;
-	if (stale_slots) {
-		do {
-			finger = __ffs(stale_slots);
-			stale_slots &= ~(1UL << finger);
-			input_mt_slot(rmi4_data->input_dev, finger);
-			input_mt_report_slot_state(rmi4_data->input_dev,
-					MT_TOOL_FINGER, 0);
-			dev_info(rmi4_data->pdev->dev.parent,
-				"%s: release stale slot %d\n", __func__, finger);
-		} while (stale_slots);
-		input_sync(rmi4_data->input_dev);
 	}
 
 	if (touch_count == 0) {
@@ -963,8 +890,6 @@ static int synaptics_rmi4_report_touch(struct synaptics_rmi4_data *rmi4_data,
 
 	return retval;
 }
-
-//int mdss_fb_send_panel_dead(int fb_num);
 
 static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 {
@@ -1186,7 +1111,7 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 		synaptics_rmi4_sensor_report(rmi4_data);
 
 		retval = request_irq(rmi4_data->irq,
-				synaptics_rmi4_irq, IRQF_TRIGGER_FALLING,
+				synaptics_rmi4_irq, bdata->irq_flags,
 				PLATFORM_DRIVER_NAME, rmi4_data);
 		if (retval < 0) {
 			dev_err(rmi4_data->pdev->dev.parent,
@@ -1627,7 +1552,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	/* Maximum number of fingers supported */
 	fhandler->num_of_data_points = min_t(unsigned char,
 			ctrl_23.max_reported_objects,
-			F12_FINGERS_TO_SUPPORT); //10
+			F12_FINGERS_TO_SUPPORT);
 
 	num_of_fingers = fhandler->num_of_data_points;
 	rmi4_data->num_of_fingers = num_of_fingers;
@@ -2180,7 +2105,7 @@ static void synaptics_rmi4_set_params(struct synaptics_rmi4_data *rmi4_data)
 #endif
 
 	input_mt_init_slots(rmi4_data->input_dev,
-			rmi4_data->num_of_fingers,0);//aaron
+			rmi4_data->num_of_fingers, 0);
 
 	return;
 }
@@ -2438,7 +2363,6 @@ static int synaptics_rmi4_free_fingers(struct synaptics_rmi4_data *rmi4_data)
 	mutex_unlock(&(rmi4_data->rmi4_report_mutex));
 
 	rmi4_data->fingers_on_2d = false;
-	rmi4_data->f12_active_slots = 0;
 
 	return 0;
 }
@@ -2502,11 +2426,6 @@ static int synaptics_rmi4_reinit_device(struct synaptics_rmi4_data *rmi4_data)
 	}
 	mutex_unlock(&rmi4_data->exp_data.mutex);
 
-	if (!rmi4_data->hw_if->board_data->touchpad) {
-		printk("%s:mdss_fb_send_panel_dead\n",__func__);
-		//mdss_fb_send_panel_dead(0);
-	}
-
 	retval = synaptics_rmi4_set_configured(rmi4_data);
 exit:
 	mutex_unlock(&(rmi4_data->rmi4_reset_mutex));
@@ -2567,11 +2486,6 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 	mutex_unlock(&rmi4_data->exp_data.mutex);
 
 	synaptics_rmi4_irq_enable(rmi4_data, true, false);
-
-	if (!rmi4_data->hw_if->board_data->touchpad) {
-		printk("%s:mdss_fb_send_panel_dead\n",__func__);
-		//mdss_fb_send_panel_dead(0);
-	}
 
 	mutex_unlock(&(rmi4_data->rmi4_reset_mutex));
 
@@ -2667,7 +2581,6 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	const struct synaptics_dsx_hw_interface *hw_if;
 	const struct synaptics_dsx_board_data *bdata;
 
-	dev_err(&pdev->dev, "%s: enter\n",__func__);
 	hw_if = pdev->dev.platform_data;
 	if (!hw_if) {
 		dev_err(&pdev->dev,
@@ -2808,8 +2721,6 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	synaptics_rmi4_fw_update_module_init(rmi4_data);
 #endif
 
-	g_rmi4_data = rmi4_data;
-	tpd_load_status = 1;
 	return retval;
 
 err_sysfs:
@@ -2861,8 +2772,6 @@ static int synaptics_rmi4_remove(struct platform_device *pdev)
 {
 	unsigned char attr_count;
 	struct synaptics_rmi4_data *rmi4_data = platform_get_drvdata(pdev);
-
-	g_rmi4_data = NULL;
 	const struct synaptics_dsx_board_data *bdata =
 			rmi4_data->hw_if->board_data;
 
@@ -3081,7 +2990,7 @@ static struct platform_driver synaptics_rmi4_driver = {
 	.remove = synaptics_rmi4_remove,
 };
 
-static int synaptics_dsx_tpd_local_init(void)
+static int __init synaptics_rmi4_init(void)
 {
 	int retval;
 
@@ -3092,53 +3001,18 @@ static int synaptics_dsx_tpd_local_init(void)
 	return platform_driver_register(&synaptics_rmi4_driver);
 }
 
-static void synaptics_dsx_tpd_suspend(struct device *dev)
-{
-	if (g_rmi4_data)
-		synaptics_rmi4_suspend(&g_rmi4_data->pdev->dev);
-}
-
-static void synaptics_dsx_tpd_resume(struct device *dev)
-{
-	if (g_rmi4_data)
-		synaptics_rmi4_resume(&g_rmi4_data->pdev->dev);
-}
-
-static unsigned char synaptics_dsx_fw_version[50];
-static char *synaptics_dsx_get_tp_firmware_version(void)
-{
-	if (g_rmi4_data)
-		snprintf(synaptics_dsx_fw_version, sizeof(synaptics_dsx_fw_version),
-			 "%u", g_rmi4_data->firmware_id);
-	else
-		snprintf(synaptics_dsx_fw_version, sizeof(synaptics_dsx_fw_version),
-			 "unknown");
-
-	return synaptics_dsx_fw_version;
-}
-
-struct tpd_driver_t synaptics_dsx_mtk_driver = {
-	.tpd_device_name = "synaptics_dsx",
-	.tpd_local_init = synaptics_dsx_tpd_local_init,
-	.suspend = synaptics_dsx_tpd_suspend,
-	.resume = synaptics_dsx_tpd_resume,
-	.tpd_have_button = 0,
-	.get_tp_firmware_version = synaptics_dsx_get_tp_firmware_version,
-};
-
-int synaptics_dsx_module_init(void)
-{
-	tpd_get_dts_info();
-	if (tpd_driver_add(&synaptics_dsx_mtk_driver) < 0) {
-		pr_err("Fail to add synaptics_dsx tpd driver\n");
-		return -ENODEV;
-	}
-	return 0;
-}
-
-void synaptics_dsx_module_exit(void)
+static void __exit synaptics_rmi4_exit(void)
 {
 	platform_driver_unregister(&synaptics_rmi4_driver);
+
 	synaptics_rmi4_bus_exit();
-	tpd_driver_remove(&synaptics_dsx_mtk_driver);
+
+	return;
 }
+
+fs_initcall_sync(synaptics_rmi4_init);
+module_exit(synaptics_rmi4_exit);
+
+MODULE_AUTHOR("Synaptics, Inc.");
+MODULE_DESCRIPTION("Synaptics DSX Touch Driver");
+MODULE_LICENSE("GPL v2");
