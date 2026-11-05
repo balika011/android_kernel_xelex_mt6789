@@ -956,6 +956,7 @@ static int pca953x_probe(struct i2c_client *client,
 	u32 invert = 0;
 	struct regulator *reg;
 	const struct regmap_config *regmap_config;
+	struct gpio_desc *reset_gpio;
 
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (chip == NULL)
@@ -967,24 +968,8 @@ static int pca953x_probe(struct i2c_client *client,
 		chip->gpio_start = pdata->gpio_base;
 		invert = pdata->invert;
 		chip->names = pdata->names;
-	} else {
-		struct gpio_desc *reset_gpio;
-
+	} else
 		chip->gpio_start = -1;
-		irq_base = 0;
-
-		/*
-		 * See if we need to de-assert a reset pin.
-		 *
-		 * There is no known ACPI-enabled platforms that are
-		 * using "reset" GPIO. Otherwise any of those platform
-		 * must use _DSD method with corresponding property.
-		 */
-		reset_gpio = devm_gpiod_get_optional(&client->dev, "reset",
-						     GPIOD_OUT_LOW);
-		if (IS_ERR(reset_gpio))
-			return PTR_ERR(reset_gpio);
-	}
 
 	chip->client = client;
 
@@ -1014,6 +999,23 @@ static int pca953x_probe(struct i2c_client *client,
 	}
 
 	i2c_set_clientdata(client, chip);
+
+	/*
+		 * See if we need to de-assert a reset pin.
+		 *
+		 * There is no known ACPI-enabled platforms that are
+		 * using "reset" GPIO. Otherwise any of those platform
+		 * must use _DSD method with corresponding property.
+		 */
+	reset_gpio =
+		devm_gpiod_get_optional(&client->dev, "reset", GPIOD_OUT_LOW);
+	if (reset_gpio && !IS_ERR(reset_gpio)) {
+		usleep_range(1000, 2000);
+		gpiod_set_value_cansleep(reset_gpio, 0);
+		usleep_range(1000, 2000);
+		gpiod_set_value_cansleep(reset_gpio, 1);
+		usleep_range(6000, 6500);
+	}
 
 	pca953x_setup_gpio(chip, chip->driver_data & PCA_GPIO_MASK);
 
