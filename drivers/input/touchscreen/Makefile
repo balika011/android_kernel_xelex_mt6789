@@ -126,3 +126,5 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/k6895v1_64_95t_alpha),)
 obj-$(CONFIG_TOUCHSCREEN_MT6895_ALPHA_SUPPORT) += k6895v1_64_95t_alpha/
 endif
+
+obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX) += synaptics_dsx/

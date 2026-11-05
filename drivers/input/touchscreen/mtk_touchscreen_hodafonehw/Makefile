@@ -15,5 +15,4 @@ mtk_touchscreen_hodafonehw-y   +=  tpd_misc.o
 mtk_touchscreen_hodafonehw-y   +=  tpd_setting.o
 mtk_touchscreen_hodafonehw-y   += hodafone_gesture.o
 
-include $(srctree)/drivers/input/touchscreen/mtk_touchscreen_hodafonehw/synaptics_dsx/Makefile
 include $(srctree)/drivers/input/touchscreen/mtk_touchscreen_hodafonehw/q20_touch/Makefile
