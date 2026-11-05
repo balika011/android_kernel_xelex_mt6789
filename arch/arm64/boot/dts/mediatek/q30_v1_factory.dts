@@ -37,9 +37,9 @@
 		red {
 			label = "red";
 			gpios = <&pio 46 0>;
+			default-state = "off";
 			power_off_charge,label = "red1";
 			linux,default-trigger = "battery_red";
-			default-state = "off";
 			retain-state-suspended;
 		};
 		green {
@@ -58,10 +58,62 @@
 			linux,default-trigger = "battery_blue";
 			retain-state-suspended;
 		};
+		keyboard {
+			label = "keyboard-backlight";
+			gpios = <&pio 151 0>;
+			default-state = "off";
+			linux,default-trigger = "kbd-backlight";
+		};
 	};
-	
-};
 
+	keypad {
+		compatible = "gpio-matrix-keypad";
+		row-gpios = <&keypad_gpio 4 0>,
+			<&keypad_gpio 3 0>,
+			<&keypad_gpio 2 0>,
+			<&keypad_gpio 5 0>,
+			<&keypad_gpio 6 0>,
+			<&keypad_gpio 7 0>;
+		column-gpios = <&keypad_gpio 8 0>,
+			<&keypad_gpio 9 0>,
+			<&keypad_gpio 10 0>,
+			<&keypad_gpio 11 0>,
+			<&keypad_gpio 12 0>;
+		keypad,num-rows = <6>;
+		keypad,num-columns = <5>;
+		keypad,debounce-ms = <5>;
+		linux,keypad-no-autorepeat;
+		linux,keymap = <0x02000010 /* row: 2 column: 0 keycode: KEY_Q */
+				0x02010011 /* row: 2 column: 1 keycode: KEY_W */
+				0x02020012 /* row: 2 column: 2 keycode: KEY_E */
+				0x02030013 /* row: 2 column: 3 keycode: KEY_R */
+				0x02040014 /* row: 2 column: 4 keycode: KEY_T */
+				0x03000015 /* row: 3 column: 0 keycode: KEY_Y */
+				0x03010016 /* row: 3 column: 1 keycode: KEY_U */
+				0x03020017 /* row: 3 column: 2 keycode: KEY_I */
+				0x03030018 /* row: 3 column: 3 keycode: KEY_O */
+				0x03040019 /* row: 3 column: 4 keycode: KEY_P */
+				0x0100001e /* row: 1 column: 0 keycode: KEY_A */
+				0x0101001f /* row: 1 column: 1 keycode: KEY_S */
+				0x01020020 /* row: 1 column: 2 keycode: KEY_D */
+				0x01030021 /* row: 1 column: 3 keycode: KEY_F */
+				0x01040022 /* row: 1 column: 4 keycode: KEY_G */
+				0x04000023 /* row: 4 column: 0 keycode: KEY_H */
+				0x04010024 /* row: 4 column: 1 keycode: KEY_J */
+				0x04020025 /* row: 4 column: 2 keycode: KEY_K */
+				0x04030026 /* row: 4 column: 3 keycode: KEY_L */
+				0x0404000e /* row: 4 column: 4 keycode: KEY_BACKSPACE */
+				0x0000002c /* row: 0 column: 0 keycode: KEY_Z */
+				0x0001002d /* row: 0 column: 1 keycode: KEY_X */
+				0x0002002e /* row: 0 column: 2 keycode: KEY_C */
+				0x0003002f /* row: 0 column: 3 keycode: KEY_V */
+				0x00040039 /* row: 0 column: 4 keycode: KEY_SPACE */
+				0x05010030 /* row: 5 column: 1 keycode: KEY_B */
+				0x05020031 /* row: 5 column: 2 keycode: KEY_N */
+				0x05030032 /* row: 5 column: 3 keycode: KEY_M */
+				0x0504001c>; /* row: 5 column: 4 keycode: KEY_ENTER */
+	};
+};
 
 &pio {
 	mtkfb_pins_lcm_led_en1: lcm_led_en1_gpio {
@@ -150,6 +202,7 @@
 		};
 	};
 };
+
 &accdet {
 	accdet-mic-vol = <6>;
 	headset-mode-setting = <0x500 0x500 1 0x1f0 0x800 0x800 0x20 0x44>,
@@ -165,7 +218,6 @@
 	/*0--MD_MAX--VOICE_MAX--UP_MAX--DW_MAX*/
 	headset-four-key-threshold = <0 58 121 192 400>;
 };
-
 
 /* GPS GPIO standardization start */
 &pio {
@@ -284,7 +336,6 @@
 		/* enable_fast_charging_indicator; */
 };
 
-
 &pe5 {
 	polling_interval = <10000>;
 	ta_cv_ss_repeat_tmin = <25>;
@@ -379,79 +430,17 @@
 
 &i2c2 {
 	status = "okay";
-	aw95016_ex@20 {
-		compatible = "awinic,aw95016";
+	keypad_gpio: aw95016_ex@20 {
+		compatible = "awinic,aw95016a";
 		reg = <0x20>;
-		reset-gpio = <&pio 153 0>; //rst gpio
-		irq-gpio = <&pio 4 0>; //irq gpio
+		reset-gpio = <&pio 153 0>;
+		interrupt-parent = <&pio>;
+		interrupts = <4 IRQ_TYPE_EDGE_FALLING>;
+		gpio-controller;
+		interrupt-controller;
+		#gpio-cells = <2>;
+		#interrupt-cells = <2>;
 		status = "okay";
-		aw95016,single_key_enable = <0>; //enable single key function, 0 to disable
-		aw95016,matrix_key_enable = <1>; //enable matrix key function, 0 to disable
-		aw95016,gpio_enable = <0>; //enable gpio function, 0 to disable
-		aw95016,kb-blk-gpio = <&pio 151 0>; //keyboard backlight gpio
-		aw95016,key{
-			aw95016,wake_up_enable = <0>; //enabel key function in suspend mode,0 to disable
-			aw95016,input_port_mask = <0x1F00>; // 0000 1111 0000 0000 Identifies the pin port for the input. here: P1_0-P1_3
-			aw95016,output_port_mask = <0x00FC>; //1111 0000 0000 0000 Identifies the pin port for the output here: P1_4-P1_7
-		};
-		aw95016,gpio{
-			aw95016,gpio_mode = <1>;
-			gpio02{
-				aw95016,gpio_idx = <2>; // The specific port identifier used, This is used here:P0_2
-				aw95016,gpio_dir = <1>; // The specific port work in output(1) or input(0)
-				aw95016,gpio_default_val = <0>;
-			};
-			gpio03{
-				aw95016,gpio_idx = <3>; // The specific port identifier used, This is used here:P0_3
-				aw95016,gpio_dir = <1>; //The specific port work in output(1) or input(0)
-				aw95016,gpio_default_val = <0>;
-			};
-			gpio04{
-				aw95016,gpio_idx = <4>; // The specific port identifier used, This is used here:P0_4
-				aw95016,gpio_dir = <1>; //The specific port work in output(1) or input(0)
-				aw95016,gpio_default_val = <0>;
-			};
-			gpio05{
-				aw95016,gpio_idx = <5>; // The specific port identifier used, This is used here:P0_5
-				aw95016,gpio_dir = <1>; //The specific port work in output(1) or input(0)
-				aw95016,gpio_default_val = <0>;
-			};
-			gpio06{
-				aw95016,gpio_idx = <6>; // The specific port identifier used, This is used here:P0_6
-				aw95016,gpio_dir = <1>; //The specific port work in output(1) or input(0)
-				aw95016,gpio_default_val = <0>;
-			};
-			gpio07{
-				aw95016,gpio_idx = <7>; // The specific port identifier used, This is used here:P0_7
-				aw95016,gpio_dir = <1>; //The specific port work in output(1) or input(0)
-				aw95016,gpio_default_val = <0>;
-			};
-			gpio10{
-				aw95016,gpio_idx = <8>; // The specific port identifier used, This is used here:P1_0
-				aw95016,gpio_dir = <0>; // The specific port work in output(1) or input(0)
-				aw95016,gpio_default_val = <1>;
-			};
-			gpio11{
-				aw95016,gpio_idx = <9>; // The specific port identifier used, This is used here:P1_1
-				aw95016,gpio_dir = <0>; // The specific port work in output(1) or input(0)
-				aw95016,gpio_default_val = <1>;
-			};
-			gpio12{
-				aw95016,gpio_idx = <10>; // The specific port identifier used, This is used here:P1_2
-				aw95016,gpio_dir = <0>; // The specific port work in output(1) or input(0)
-				aw95016,gpio_default_val = <1>;
-			};
-			gpio13{
-				aw95016,gpio_idx = <11>; // The specific port identifier used, This is used here:P1_3
-				aw95016,gpio_dir = <0>; //The specific port work in output(1) or input(0)
-				aw95016,gpio_default_val = <1>;
-			};
-			gpio14{
-				aw95016,gpio_idx = <12>; // The specific port identifier used, This is used here:P1_4
-				aw95016,gpio_dir = <0>; //The specific port work in output(1) or input(0)
-				aw95016,gpio_default_val = <1>;
-			};
-		};
 	};
 };
 
