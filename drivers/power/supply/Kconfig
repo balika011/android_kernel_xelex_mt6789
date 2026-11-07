@@ -1037,12 +1037,4 @@ config GAUGE_MT6983_ALPHA_SUPPORT
 	  Set Y or M to select this feature for specific platform-mt6983,
 	  and set N to disable.
 
-config HODAFONE_BATTERY_SUPPORT
-	tristate "Hodafone Charging Support"
-	help
-	  Say yes here to enable Hodafone charging driver.
-	  This driver contains charging control flow and
-	  maintains charging status.
-	  Say no if not using Hodafone charging driver.
-
 endif # POWER_SUPPLY
