@@ -25,18 +25,8 @@
 #define DEBUG_LEVEL_RW              2
 #define DEBUG_LEVEL_LD              4
 
-//#define DEBUG_LEVEL                 DEBUG_LEVEL_OFF
+#define DEBUG_LEVEL                 DEBUG_LEVEL_OFF
 // #define DEBUG_LEVEL					DEBUG_LEVEL_FE
 // #define DEBUG_LEVEL                (DEBUG_LEVEL_LD)
-#define DEBUG_LEVEL			(DEBUG_LEVEL_FE | DEBUG_LEVEL_RW | DEBUG_LEVEL_LD)
-
-#define DRIVER_NAME			"BBQX0KBD"
- 
-#if DEBUG_LEVEL
-#define BBQX0KBD_KEYBOARD_LOG(fmt, args...)    pr_err("[%s] %s %d: " fmt, DRIVER_NAME, __func__, __LINE__, ##args)
-#else
-#define BBQX0KBD_KEYBOARD_LOG(fmt, args...)
-#endif
-#define BBQX0KBD_KEYBOARD_ERR(fmt, args...)    pr_err("[%s] %s %d: " fmt, DRIVER_NAME, __func__, __LINE__, ##args)
-
+// #define DEBUG_LEVEL			(DEBUG_LEVEL_FE | DEBUG_LEVEL_RW | DEBUG_LEVEL_LD)
 #endif

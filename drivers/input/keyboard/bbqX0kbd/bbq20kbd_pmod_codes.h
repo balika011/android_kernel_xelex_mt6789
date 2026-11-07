@@ -60,14 +60,10 @@ static unsigned short keycodes[NUM_KEYCODES] = {
 	 *[0x03] = KEY_LEFT,
 	 *[0x04] = KEY_RIGHT,
 	 */
-#if (BBQ20KBD_TRACKPAD_USE == BBQ20KBD_TRACKPAD_AS_MOUSE)
-	[0x05] = BTN_LEFT,
-#elif (BBQ20KBD_TRACKPAD_USE == BBQ20KBD_TRACKPAD_AS_KEYS)
 	[0x05] = KEY_ENTER,
-#endif
 
 	[0x06] = KEY_SEND,
-	[0x11] = 580,
+	[0x11] = KEY_APPSELECT,
 	[0x07] = KEY_BACK,
 	[0x12] = KEY_HOMEPAGE,
 
@@ -140,6 +136,5 @@ static unsigned short keycodes[NUM_KEYCODES] = {
 	['l'] = KEY_RIGHT,
 	['m'] = KEY_HOME,
 };
-
 
 #endif

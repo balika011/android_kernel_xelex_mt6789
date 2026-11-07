@@ -52,19 +52,31 @@
 		};
 	};
 
-	pdrv_bbqX0kbd: pdrv_bbqX0kbd {
-		compatible = "wallComputer,pdrv_bbqX0kbd";
-		irq-gpio = <&pio 12 0>;
-		power-vdd-gpios = <&pio 159 0>;
-		power-1v8-gpios = <&pio 157 0>;
-		power-2v8-gpios = <&pio 158 0>;
-		firmware-download-gpios = <&pio 47 0>;
-	};
-
 	display_ldo: fixed-regulator-1 {
 		compatible = "regulator-fixed";
 		regulator-name = "display_ldo";
 		gpio = <&pio 27 0>;
+		enable-active-high;
+	};
+
+	bbqX0kbd_vdd_ldo: fixed-regulator-2 {
+		compatible = "regulator-fixed";
+		regulator-name = "bbqX0kbd_vdd_ldo";
+		gpio = <&pio 159 0>;
+		enable-active-high;
+	};
+
+	bbqX0kbd_1v8_ldo: fixed-regulator-3 {
+		compatible = "regulator-fixed";
+		regulator-name = "bbqX0kbd_1v8_ldo";
+		gpio = <&pio 157 0>;
+		enable-active-high;
+	};
+
+	bbqX0kbd_2v8_ldo: fixed-regulator-4 {
+		compatible = "regulator-fixed";
+		regulator-name = "bbqX0kbd_2v8_ldo";
+		gpio = <&pio 158 0>;
 		enable-active-high;
 	};
 };
@@ -238,8 +250,11 @@
 		compatible = "wallComputer,bbqX0kbd";
 		reg = <0x1F>;
 		interrupt-parent = <&pio>;
-		interrupts = <12 0x02>;
-		interrupt-controller;
+		interrupts = <12 IRQ_TYPE_EDGE_FALLING>;
+		vdd-supply = <&bbqX0kbd_vdd_ldo>;
+		1v8-supply = <&bbqX0kbd_1v8_ldo>;
+		2v8-supply = <&bbqX0kbd_2v8_ldo>;
+		firmware-download-gpios = <&pio 47 0>;
 	};
 };
 
@@ -420,6 +435,7 @@
 		dev_index = < 0 >;
 		status = "okay";
 	};
+
 	upm6922_chg:upm6922@6B {
 		status = "okay";
 		compatible = "up,upm6922_charger";

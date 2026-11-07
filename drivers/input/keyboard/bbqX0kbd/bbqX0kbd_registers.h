@@ -16,12 +16,7 @@
 #define BBQX0KBD_FIFO_SIZE				31
 
 #define REG_VER                         0x01
-#if (BBQX0KBD_TYPE == BBQ10KBD_FEATHERWING)
-#define BBQX0KBD_I2C_SW_VERSION			0x04	// Unused for now since the version numbering has reset.
-#endif
-#if (BBQX0KBD_TYPE == BBQ20KBD_PMOD)
 #define BBQX0KBD_I2C_SW_VERSION			0x10
-#endif
 #define REG_CFG                         0x02
 #define REG_CFG_USE_MODS                BIT(7)
 #define REG_CFG_REPORT_MODS             BIT(6)
@@ -36,9 +31,7 @@
 // #define REG_CFG_DEFAULT_SETTING         (REG_CFG_OVERFLOW_ON | REG_CFG_OVERFLOW_INT | REG_CFG_CAPSLOCK_INT | REG_CFG_NUMLOCK_INT | REG_CFG_KEY_INT | REG_CFG_REPORT_MODS )
 
 #define REG_INT                         0x03
-#if (BBQX0KBD_TYPE == BBQ20KBD_PMOD)
 #define REG_INT_TOUCH					BIT(6)
-#endif
 #define REG_INT_GPIO                    BIT(5)
 #define REG_INT_PANIC                   BIT(4)
 #define REG_INT_KEY                     BIT(3)
@@ -92,7 +85,6 @@
 
 #define BBQ10_BRIGHTNESS_DELTA			16
 
-#if (BBQX0KBD_TYPE == BBQ20KBD_PMOD)
 #define REG_CF2							0x14
 #define REG_CF2_USB_MOUSE_ON			BIT(2)
 #define REG_CF2_USB_KEYB_ON				BIT(1)
@@ -101,7 +93,6 @@
 
 #define REG_TOX							0x15
 #define REG_TOY							0x16
-#endif
 
 
 #endif
