@@ -83,8 +83,6 @@
 #define REG_GIN                         0x10
 #define REG_GIN_RESET_VALUE             0x00
 
-#define BBQ10_BRIGHTNESS_DELTA			16
-
 #define REG_CF2							0x14
 #define REG_CF2_USB_MOUSE_ON			BIT(2)
 #define REG_CF2_USB_KEYB_ON				BIT(1)
