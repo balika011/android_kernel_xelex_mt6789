@@ -423,12 +423,6 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	mtk_camera_eeprom3:camera_eeprom3@53 {
-		compatible = "mediatek,camera_eeprom";
-		reg = <0x53>;
-		status = "okay";
-	};
-	
 	camera_main_three_mtk:camera_main_three@1a {
 		compatible = "mediatek,camera_main_three";
 		#thermal-sensor-cells = <0>;
@@ -442,12 +436,6 @@
 	clock-frequency = <400000>;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	
-	mtk_camera_eeprom0:camera_eeprom0@50 {
-		compatible = "mediatek,camera_eeprom";
-		reg = <0x50>;
-		status = "okay";
-	};
 
 	camera_main_mtk:camera_main@1a {
 		compatible = "mediatek,camera_main";

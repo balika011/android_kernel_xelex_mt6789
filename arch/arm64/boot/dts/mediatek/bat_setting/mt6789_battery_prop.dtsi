@@ -1,9 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0
-/*
- * Copyright (c) 2021 MediaTek Inc.
- * Author: Wy Chuang<wy.chuang@mediatek.com>
- *
- */
 
 &mtk_gauge {
 	DIFFERENCE_FULLOCV_ITH = <(200)>;
