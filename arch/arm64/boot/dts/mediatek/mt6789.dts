@@ -7289,4 +7289,3 @@
 	};
 };
 #include "mediatek/trusty.dtsi"
-#include "mediatek/hodafone/hodafone.dtsi"
