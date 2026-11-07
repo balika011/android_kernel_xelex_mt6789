@@ -62,11 +62,9 @@
 
 	display_ldo: fixed-regulator-1 {
 		compatible = "regulator-fixed";
-		regulator-name = "panorama_ldo";
+		regulator-name = "display_ldo";
 		gpio = <&pio 27 0>;
 		enable-active-high;
-		regulator-boot-on;
-	};
 };
 
 
