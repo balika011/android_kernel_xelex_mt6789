@@ -16,10 +16,10 @@
 	compatible = "mediatek,i2c-leds";
 
 	backlight {
+		max-hw-brightness = <25>;
 		led_mode = <6>;
 		gate_enable = <0>;
 		pwm_config = <0 1 0 0 0>;
-		max-hw-brightness = <25>;
 	};
 };
 
@@ -442,7 +442,7 @@
 		reg = <0x6b>;
 		up,intr_gpio = <&pio 37 0>;
 
-		up,upm6922,ichg = <3000>;				/* unit:1mA */
+		up,upm6922,ichg = <3000>;              /* unit:1mA */
 		up,upm6922,iprechg = <180>;            /* unit:1mA */
 		up,upm6922,iterm = <200>;              /* unit:1mA */
 		up,upm6922,vreg = <4440>;              /* unit:1mV */

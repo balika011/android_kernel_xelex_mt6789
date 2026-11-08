@@ -223,6 +223,7 @@
 		};
 	};
 };
+
 &gps {
 	pinctrl-names = "default",
 		"gps_l1_lna_disable",
@@ -244,9 +245,9 @@
 #include "mediatek/cust_mt6789_camera_v4l2.dtsi"
 
 &i2c6 {
-	bbqX0kbd: bbqX0kbd@1f {
+	bbqX0kbd@1f {
 		compatible = "wallComputer,bbqX0kbd";
-		reg = <0x1F>;
+		reg = <0x1f>;
 		interrupt-parent = <&pio>;
 		interrupts = <12 IRQ_TYPE_EDGE_FALLING>;
 		vdd-supply = <&bbqX0kbd_vdd_ldo>;
@@ -367,7 +368,6 @@
 
 &i2c0 {
 	synaptics_dsx_i2c_display@67 {
-		status = "okay";
 		compatible = "synaptics,dsx";
 		reg = <0x67>;
 		vdd-supply = <&display_ldo>;
@@ -431,7 +431,7 @@
 		reg = <0x6b>;
 		up,intr_gpio = <&pio 37 0>;
 
-		up,upm6922,ichg = <3000>;				/* unit:1mA */
+		up,upm6922,ichg = <3000>;              /* unit:1mA */
 		up,upm6922,iprechg = <180>;            /* unit:1mA */
 		up,upm6922,iterm = <200>;              /* unit:1mA */
 		up,upm6922,vreg = <4440>;              /* unit:1mV */

@@ -10,7 +10,6 @@
 #include <dt-bindings/usb/pd.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/iio/mt635x-auxadc.h>
-#include <dt-bindings/gpio/gpio.h>
 #include "mediatek/cust_mt6789_camera.dtsi"
 
 &mtk_leds {
@@ -197,7 +196,6 @@
 		compatible = "mediatek,q30_panel_general,vdo";
 		reg = <0>;
 		reset-gpios = <&pio 85 0>;
-		/* disp_pwm-gpios = <&pio 84 0>; */
 		board_name = "q30_v1";
 		port {
 			panel_in1: endpoint {
@@ -270,6 +268,7 @@
 		};
 	};
 };
+
 &gps {
 	pinctrl-names = "default",
 		"gps_l1_lna_disable",
@@ -295,57 +294,57 @@
 };
 
 &charger {
-		charger = <&upm6922_chg>;
-		algorithm_name = "Basic";
-		disable_aicl;
+	charger = <&upm6922_chg>;
+	algorithm_name = "Basic";
+	disable_aicl;
 
-		/* common */
-		battery_cv = <4440000>;
-		max_charger_voltage = <12000000>;
-		min_charger_voltage = <4600000>;
+	/* common */
+	battery_cv = <4440000>;
+	max_charger_voltage = <12000000>;
+	min_charger_voltage = <4600000>;
 
-		/* sw jeita */
-		/* enable_vbat_mon = <1>; */
-		/* enable_sw_jeita; */
-		jeita_temp_above_t4_cv = <4240000>;
-		jeita_temp_t3_to_t4_cv = <4240000>;
-		jeita_temp_t2_to_t3_cv = <4340000>;
-		jeita_temp_t1_to_t2_cv = <4240000>;
-		jeita_temp_t0_to_t1_cv = <4040000>;
-		jeita_temp_below_t0_cv = <4040000>;
-		temp_t4_thres = <50>;
-		temp_t4_thres_minus_x_degree = <47>;
-		temp_t3_thres = <45>;
-		temp_t3_thres_minus_x_degree = <39>;
-		temp_t2_thres = <10>;
-		temp_t2_thres_plus_x_degree = <16>;
-		temp_t1_thres = <0>;
-		temp_t1_thres_plus_x_degree = <6>;
-		temp_t0_thres = <0>;
-		temp_t0_thres_plus_x_degree = <0>;
-		temp_neg_10_thres = <0>;
+	/* sw jeita */
+	/* enable_vbat_mon = <1>; */
+	/* enable_sw_jeita; */
+	jeita_temp_above_t4_cv = <4240000>;
+	jeita_temp_t3_to_t4_cv = <4240000>;
+	jeita_temp_t2_to_t3_cv = <4340000>;
+	jeita_temp_t1_to_t2_cv = <4240000>;
+	jeita_temp_t0_to_t1_cv = <4040000>;
+	jeita_temp_below_t0_cv = <4040000>;
+	temp_t4_thres = <50>;
+	temp_t4_thres_minus_x_degree = <47>;
+	temp_t3_thres = <45>;
+	temp_t3_thres_minus_x_degree = <39>;
+	temp_t2_thres = <10>;
+	temp_t2_thres_plus_x_degree = <16>;
+	temp_t1_thres = <0>;
+	temp_t1_thres_plus_x_degree = <6>;
+	temp_t0_thres = <0>;
+	temp_t0_thres_plus_x_degree = <0>;
+	temp_neg_10_thres = <0>;
 
-		/* battery temperature protection */
-		enable_min_charge_temp;
-		min_charge_temp = <(-5)>;
-		min_charge_temp_plus_x_degree = <1>;
-		max_charge_temp = <55>;
-		max_charge_temp_minus_x_degree = <53>;
+	/* battery temperature protection */
+	enable_min_charge_temp;
+	min_charge_temp = <(-5)>;
+	min_charge_temp_plus_x_degree = <1>;
+	max_charge_temp = <55>;
+	max_charge_temp_minus_x_degree = <53>;
 
-		/* charging current */
-		usb_charger_current = <500000>;
-		ac_charger_current = <3250000>;
-		ac_charger_input_current = <3000000>;
-		charging_host_charger_current = <3250000>;
+	/* charging current */
+	usb_charger_current = <500000>;
+	ac_charger_current = <3250000>;
+	ac_charger_input_current = <3000000>;
+	charging_host_charger_current = <3250000>;
 
-		/* dynamic mivr */
-		/* enable_dynamic_mivr;*/
-		min_charger_voltage_1 = <4400000>;
-		min_charger_voltage_2 = <4200000>;
-		max_dmivr_charger_current = <1800000>;
+	/* dynamic mivr */
+	/* enable_dynamic_mivr;*/
+	min_charger_voltage_1 = <4400000>;
+	min_charger_voltage_2 = <4200000>;
+	max_dmivr_charger_current = <1800000>;
 
-		/* fast charging algo support indicator */
-		/* enable_fast_charging_indicator; */
+	/* fast charging algo support indicator */
+	/* enable_fast_charging_indicator; */
 };
 
 &pe5 {
@@ -451,67 +450,6 @@
 	};
 };
 
-&touch {
-	tpd-resolution = <1440 1440>;
-	use-tpd-button = <0>;
-	tpd-key-num = <3>;
-	tpd-key-local= <139 172 158 0>;
-	tpd-key-dim-local = <90 883 100 40 230
-				 883 100 40 370 883 100 40 0 0 0 0>;
-	tpd-max-touch-num = <5>;
-	tpd-filter-enable = <1>;
-	tpd-filter-pixel-density = <146>;
-	tpd-filter-custom-prameters = <0 0 0 0 0 0 0 0 0 0 0 0>;
-	tpd-filter-custom-speed = <0 0 0>;
-	pinctrl-names = "default", "state_eint_as_int", "state_eint_output0",
-		"state_eint_output1", "state_rst_output0", "state_rst_output1";
-	pinctrl-0 = <&ctp_pins_default>;
-	pinctrl-1 = <&ctp_pins_eint_as_int>;
-	pinctrl-2 = <&ctp_pins_eint_output0>;
-	pinctrl-3 = <&ctp_pins_eint_output1>;
-	pinctrl-4 = <&ctp_pins_rst_output0>;
-	pinctrl-5 = <&ctp_pins_rst_output1>;
-	status = "okay";
-};
-&pio {
-	ctp_pins_default: ctp_pins_default0default {
-	};
-	ctp_pins_eint_as_int: ctp_pins_eint_as_int@0 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
-			slew-rate = <0>;
-		};
-	};
-	ctp_pins_eint_output0: ctp_pins_eint_output@0 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
-			slew-rate = <1>;
-			output-low;
-		};
-	};
-	ctp_pins_eint_output1: ctp_pins_eint_output@1 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
-			slew-rate = <1>;
-			output-high;
-		};
-	};
-	ctp_pins_rst_output0: ctp_pins_rst_output@0 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO152__FUNC_GPIO152>;
-			slew-rate = <1>;
-			output-low;
-		};
-	};
-	ctp_pins_rst_output1: ctp_pins_rst_output@1 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO152__FUNC_GPIO152>;
-			slew-rate = <1>;
-			output-high;
-		};
-	};
-};
-/* TOUCH end */
 &mtk_gauge {
 	charger = <&upm6922_chg>;
 };
@@ -528,23 +466,20 @@
 };
 
 &i2c3 {
-/* K9 PA Settings */
 	oca72xxx_pa@58 {
 		compatible = "ocs,oca72xxx_pa";
 		reg = <0x58>;
-	/*	reset-gpio = <&pio 106 0>;*/
 		dev_index = < 1 >;
 		status = "okay";
 	};
+
 	oca72xxx_pa@5b {
 		compatible = "ocs,oca72xxx_pa";
 		reg = <0x5b>;
-		/*	reset-gpio = <&pio 107 0>;*/
 		dev_index = < 0 >;
-		/*第 2 个 PA dev_index 为 1*/
 		status = "okay";
 	};
-	
+
 	st21nfc: st21nfc@08 {
 		compatible = "st,st21nfc";
 		reg = <0x08>;
@@ -571,7 +506,7 @@
 		reg = <0x6b>;
 		up,intr_gpio = <&pio 37 0>;
 
-		up,upm6922,ichg = <3000>;				/* unit:1mA */
+		up,upm6922,ichg = <3000>;              /* unit:1mA */
 		up,upm6922,iprechg = <180>;            /* unit:1mA */
 		up,upm6922,iterm = <200>;              /* unit:1mA */
 		up,upm6922,vreg = <4440>;              /* unit:1mV */
@@ -767,6 +702,11 @@
 	};
 };
 
+&kd_camera_hw1 {
+	cam0_enable_sensor = "s5kjn1_mipi_raw ov64b40_mipi_raw";
+	cam1_enable_sensor = "imx111_mipi_raw imx134_mipi_raw";
+};
+
 &i2c7 {
 	mtk_camera_eeprom3: camera_eeprom3@53 {
 		compatible = "mediatek,camera_eeprom";
@@ -781,11 +721,6 @@
 		reg = <0x50>;
 		status = "okay";
 	};
-};
-
-&kd_camera_hw1 {
-	cam0_enable_sensor = "s5kjn1_mipi_raw ov64b40_mipi_raw";
-	cam1_enable_sensor = "imx111_mipi_raw imx134_mipi_raw";
 };
 
 #include "q30_v1_factory/cust.dtsi"

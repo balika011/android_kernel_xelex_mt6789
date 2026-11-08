@@ -265,18 +265,6 @@
 	status = "okay";
 };
 
-&finger {
-	interrupt-parent = <&pio>;
-	interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
-	status = "okay";
-};
-
-&fingergesture {
-	interrupt-parent = <&pio>;
-	interrupts = <8 IRQ_TYPE_LEVEL_LOW>;
-	status = "okay";
-};
-
 &touch {
 	interrupt-parent = <&pio>;
 	interrupts = <9 IRQ_TYPE_LEVEL_LOW>;
