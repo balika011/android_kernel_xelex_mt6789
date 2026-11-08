@@ -246,9 +246,9 @@
 #include "mediatek/cust_mt6789_camera_v4l2.dtsi"
 
 &i2c6 {
-	bbqX0kbd: bbqX0kbd@1f {
+	bbqX0kbd@1f {
 		compatible = "wallComputer,bbqX0kbd";
-		reg = <0x1F>;
+		reg = <0x1f>;
 		interrupt-parent = <&pio>;
 		interrupts = <12 IRQ_TYPE_EDGE_FALLING>;
 		vdd-supply = <&bbqX0kbd_vdd_ldo>;

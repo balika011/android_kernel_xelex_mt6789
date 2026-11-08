@@ -32,8 +32,9 @@
 
 #include "config.h"
 #include "bbqX0kbd_registers.h"
-#include "debug_levels.h"
 #include "bbq20kbd_pmod_codes.h"
+
+#define BBQ20KBD_TRACKPAD_KEYS_OFFSET 26
 
 enum bbqX0kbd_touch_mode {
 	BBQX0KBD_TOUCH_MODE_TOUCHPAD,
@@ -56,7 +57,7 @@ struct bbqX0kbd_data {
 	int8_t relX_offset;
 	int8_t relY_offset;
 
-	uint8_t version_number;
+	unsigned int version_number;
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK)
 	struct notifier_block disp_notifier;
@@ -210,8 +211,7 @@ static int bbqX0kbd_keyboard_probe_dt(struct device *dev,
 		return PTR_ERR(bbqX0kbd_data->vdd_reg);
 	}
 
-	bbqX0kbd_data->dfu_gpio =
-		devm_gpiod_get(dev, "firmware-download", GPIOD_OUT_LOW);
+	bbqX0kbd_data->dfu_gpio = devm_gpiod_get(dev, "firmware-download", GPIOD_OUT_LOW);
 	if (IS_ERR(bbqX0kbd_data->dfu_gpio)) {
 		dev_err(dev, "Failed to configure firmware download GPIO\n");
 		return PTR_ERR(bbqX0kbd_data->dfu_gpio);
@@ -328,16 +328,11 @@ static DEVICE_ATTR(switch_key_mouse, 0644, get_switch_key_mouse, set_switch_key_
 static int bbqX0kbd_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
-	struct device *class_device;
 	struct bbqX0kbd_data *bbqX0kbd_data;
 	struct input_dev *input;
-	int rc;
-	int i;
-	unsigned int registerValue;
+	struct device *class_device;
+	int rc, i;
 
-#if (DEBUG_LEVEL & DEBUG_LEVEL_FE)
-	dev_info(&client->dev, "%s Probing BBQX0KBD.\n", __func__);
-#endif
 	bbqX0kbd_data = devm_kzalloc(dev, sizeof(*bbqX0kbd_data), GFP_KERNEL);
 	if (!bbqX0kbd_data)
 		return -ENOMEM;
@@ -346,7 +341,11 @@ static int bbqX0kbd_probe(struct i2c_client *client, const struct i2c_device_id 
 	i2c_set_clientdata(client, bbqX0kbd_data);
 	memcpy(bbqX0kbd_data->keycode, keycodes, sizeof(bbqX0kbd_data->keycode));
 
-	bbqX0kbd_keyboard_probe_dt(&client->dev, bbqX0kbd_data);
+	rc = bbqX0kbd_keyboard_probe_dt(&client->dev, bbqX0kbd_data);
+	if (rc < 0) {
+		dev_err(&client->dev, "%s failed to parser dt.\n", __func__);
+		return rc;
+	}
 
 	gpiod_set_value_cansleep(bbqX0kbd_data->dfu_gpio, 0);
 
@@ -355,61 +354,40 @@ static int bbqX0kbd_probe(struct i2c_client *client, const struct i2c_device_id 
 	mdelay(10);
 
 	regulator_enable(bbqX0kbd_data->v18_reg);
-
 	regulator_enable(bbqX0kbd_data->v28_reg);
 
 	msleep(400);
 
-	bbqX0kbd_data->regmap =
-		devm_regmap_init_i2c(client, &bbqX0kbd_i2c_regmap);
+	bbqX0kbd_data->regmap = devm_regmap_init_i2c(client, &bbqX0kbd_i2c_regmap);
 	if (IS_ERR(bbqX0kbd_data->regmap)) {
 		return PTR_ERR(bbqX0kbd_data->regmap);
 	}
 
 	rc = regmap_write(bbqX0kbd_data->regmap, REG_RST, 0);
-	if (rc) {
+	if (rc < 0) {
 		dev_err(&client->dev, "%s Could not Reset BBQX0KBD. Error: %d\n", __func__, rc);
 		return -ENODEV;
 	}
 	msleep(400);
 
-	rc = regmap_read(bbqX0kbd_data->regmap, REG_VER, &registerValue);
-	if (rc != 0) {
+	rc = regmap_read(bbqX0kbd_data->regmap, REG_VER, &bbqX0kbd_data->version_number);
+	if (rc < 0) {
 		dev_err(&client->dev, "%s Could not Read Version BBQX0KBD. Error: %d\n", __func__, rc);
 		return -ENODEV;
 	}
-	dev_info(&client->dev, "%s BBQX0KBD Software version: 0x%02X\n", __func__, registerValue);
-	bbqX0kbd_data->version_number = registerValue;
+	dev_info(&client->dev, "%s BBQX0KBD Software version: 0x%02X\n", __func__, bbqX0kbd_data->version_number);
 
 	rc = regmap_write(bbqX0kbd_data->regmap, REG_CFG, REG_CFG_DEFAULT_SETTING);
 	if (rc != 0) {
 		dev_err(&client->dev, "%s Could not write configuration to BBQX0KBD. Error: %d\n", __func__, rc);
 		return -ENODEV;
 	}
-#if (DEBUG_LEVEL & DEBUG_LEVEL_LD)
-	rc =
-		regmap_read(bbqX0kbd_data->regmap, REG_CFG, &registerValue);
-	if (rc != 0) {
-		dev_err(&client->dev, "%s Could not read REG_CFG. Error: %d\n", __func__, rc);
-		return rc;
-	}
-	dev_info(&client->dev, "%s Configuration Register Value: 0x%02X\n", __func__, registerValue);
-#endif
 
 	rc = regmap_write(bbqX0kbd_data->regmap, REG_CF2, REG_CFG2_DEFAULT_SETTING);
-	if (rc != 0) {
+	if (rc < 0) {
 		dev_err(&client->dev, "%s Could not write configuration 2 to BBQX0KBD. Error: %d\n", __func__, rc);
 		return -ENODEV;
 	}
-#if (DEBUG_LEVEL & DEBUG_LEVEL_LD)
-	rc =
-		regmap_read(bbqX0kbd_data->regmap, REG_CF2, &registerValue);
-	if (rc != 0) {
-		dev_err(&client->dev, "%s Could not read REG_CF2. Error: %d\n", __func__, rc);
-		return rc;
-	}
-	dev_info(&client->dev, "%s Configuration 2 Register Value: 0x%02X\n", __func__, registerValue);
-#endif
 
 #if (BBQ20KBD_TRACKPAD_USE == BBQ20KBD_TRACKPAD_AS_MOUSE)
 	bbqX0kbd_data->touch_mode = BBQX0KBD_TOUCH_MODE_TOUCHPAD;
@@ -447,34 +425,29 @@ static int bbqX0kbd_probe(struct i2c_client *client, const struct i2c_device_id 
 	input_set_capability(input, EV_REL, REL_X);
 	input_set_capability(input, EV_REL, REL_Y);
 
-	rc = regmap_write(bbqX0kbd_data->regmap, REG_BKL, 255);
-
 	bbqX0kbd_data->backlight.name = "keyboard-backlight";
 	bbqX0kbd_data->backlight.default_trigger = "kbd-backlight";
 	bbqX0kbd_data->backlight.brightness_set = bbqX0kbd_set_bl_level;
 
-	rc = devm_led_classdev_register(&client->dev,
-					&bbqX0kbd_data->backlight);
-	if (rc)
-		dev_warn(
-			&client->dev,
-			"Unable to register keyboard backlight class dev (%d)\n",
-			rc);
+	rc = devm_led_classdev_register(&client->dev, &bbqX0kbd_data->backlight);
+	if (rc < 0) {
+		dev_warn(&client->dev, "Unable to register keyboard backlight class dev (%d)\n", rc);
+		return rc;
+	}
 
 	rc = devm_request_threaded_irq(dev, client->irq, NULL, bbqX0kbd_irq_handler,
 										IRQF_ONESHOT, client->name, bbqX0kbd_data);
-
-	if (rc != 0) {
+	if (rc < 0) {
 		dev_err(&client->dev, "Coudl not claim IRQ %d; error %d\n", client->irq, rc);
 		return rc;
 	}
 
 	rc = input_register_device(input);
-	if (rc != 0) {
+	if (rc < 0) {
 		dev_err(dev, "Failed to register input device, error: %d\n", rc);
 		return rc;
 	}
-	
+
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK)
 	bbqX0kbd_data->disp_notifier.notifier_call =
 		bbqX0kbd_disp_notifier_callback;
@@ -511,11 +484,8 @@ static int bbqX0kbd_remove(struct i2c_client *client)
 {
 	struct bbqX0kbd_data *bbqX0kbd_data = i2c_get_clientdata(client);
 	int rc;
-#if (DEBUG_LEVEL & DEBUG_LEVEL_FE)
-	dev_info(&client->dev, "%s Shutting Down Keyboard And Screen Backlight.\n", __func__);
-#endif
-	rc =
-		regmap_write(bbqX0kbd_data->regmap, REG_BKL, 0);
+
+	rc = regmap_write(bbqX0kbd_data->regmap, REG_BKL, 0);
 	if (rc != 0) {
 		dev_err(&client->dev, "%s Could not write to BBQX0KBD Backlight. Error: %d\n", __func__, rc);
 		return rc;
@@ -559,9 +529,6 @@ static int bbqX0kbd_suspend(struct device *dev)
 static int bbqX0kbd_resume(struct device *dev)
 {
 	int rc;
-#if (DEBUG_LEVEL & DEBUG_LEVEL_LD)
-	unsigned int registerValue;
-#endif
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bbqX0kbd_data *bbqX0kbd_data = i2c_get_clientdata(client);
 
@@ -578,32 +545,11 @@ static int bbqX0kbd_resume(struct device *dev)
 			       __func__, rc);
 		}
 
-#if (DEBUG_LEVEL & DEBUG_LEVEL_LD)
-		rc = regmap_read(bbqX0kbd_data->regmap, REG_CFG, &registerValue);
-		if (rc != 0) {
-			pr_err("%s Could not read REG_CFG. Error: %d\n",
-			       __func__, rc);
-		} else {
-			pr_info("%s Configuration Register Value: 0x%02X\n",
-				__func__, registerValue);
-		}
-#endif
-
 		rc = regmap_write(bbqX0kbd_data->regmap, REG_CF2, REG_CFG2_DEFAULT_SETTING);
 		if (rc != 0) {
 			pr_err("%s Could not write configuration 2 to BBQX0KBD. Error: %d\n",
 			       __func__, rc);
 		}
-#if (DEBUG_LEVEL & DEBUG_LEVEL_LD)
-		rc = regmap_read(bbqX0kbd_data->regmap, REG_CF2, &registerValue);
-		if (rc != 0) {
-			pr_err("%s Could not read REG_CF2. Error: %d\n",
-			       __func__, rc);
-		} else {
-			pr_info("%s Configuration 2 Register Value: 0x%02X\n",
-				__func__, registerValue);
-		}
-#endif
 	}
 
 	/* Restore backlight level */

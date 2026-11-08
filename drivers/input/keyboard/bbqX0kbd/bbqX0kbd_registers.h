@@ -9,9 +9,6 @@
 
 #include "config.h"
 
-
-#define BBQX0KBD_I2C_ADDRESS			BBQX0KBD_ASSIGNED_I2C_ADDRESS
-
 #define BBQX0KBD_WRITE_MASK				0x80
 #define BBQX0KBD_FIFO_SIZE				31
 
