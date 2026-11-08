@@ -185,14 +185,16 @@ static irqreturn_t bbqX0kbd_irq_handler(int irq, void *dev_id)
 	}
 
 	input_sync(input_dev);
-	regmap_write(bbqX0kbd_data->regmap, REG_INT, 0);
+	regmap_write(bbqX0kbd_data->regmap, BBQX0KBD_WRITE_MASK | REG_INT, 0);
 
 	return IRQ_HANDLED;
 }
 
-static int bbqX0kbd_keyboard_probe_dt(struct device *dev,
-				      struct bbqX0kbd_data *bbqX0kbd_data)
+static int bbqX0kbd_keyboard_probe_dt(struct bbqX0kbd_data *bbqX0kbd_data)
 {
+	struct i2c_client * client = bbqX0kbd_data->client;
+	struct device *dev = &client->dev;
+
 	bbqX0kbd_data->vdd_reg = devm_regulator_get(dev, "vdd");
 	if (IS_ERR(bbqX0kbd_data->vdd_reg)) {
 		dev_err(dev, "Failed to get vdd regulator\n");
@@ -247,12 +249,7 @@ int  bbqX0kbd_disp_notifier_callback(
 
 static const struct regmap_config bbqX0kbd_i2c_regmap = {
 	.reg_bits = 8,
-	.val_bits = 8,
-
-	.use_single_read = true,
-	.use_single_write = true,
-
-	.disable_locking = true
+	.val_bits = 8
 };
 
 static void bbqX0kbd_set_bl_level(struct led_classdev *led_cdev,
@@ -261,7 +258,7 @@ static void bbqX0kbd_set_bl_level(struct led_classdev *led_cdev,
 	struct bbqX0kbd_data *bbqX0kbd_data =
 		container_of(led_cdev, struct bbqX0kbd_data, backlight);
 
-	regmap_write(bbqX0kbd_data->regmap, REG_BKL, value);
+	regmap_write(bbqX0kbd_data->regmap, BBQX0KBD_WRITE_MASK | REG_BKL, value);
 }
 
 static ssize_t get_firmware_upgrade(struct device *dev,
@@ -341,7 +338,7 @@ static int bbqX0kbd_probe(struct i2c_client *client, const struct i2c_device_id 
 	i2c_set_clientdata(client, bbqX0kbd_data);
 	memcpy(bbqX0kbd_data->keycode, keycodes, sizeof(bbqX0kbd_data->keycode));
 
-	rc = bbqX0kbd_keyboard_probe_dt(&client->dev, bbqX0kbd_data);
+	rc = bbqX0kbd_keyboard_probe_dt(bbqX0kbd_data);
 	if (rc < 0) {
 		dev_err(&client->dev, "%s failed to parser dt.\n", __func__);
 		return rc;
@@ -350,12 +347,10 @@ static int bbqX0kbd_probe(struct i2c_client *client, const struct i2c_device_id 
 	gpiod_set_value_cansleep(bbqX0kbd_data->dfu_gpio, 0);
 
 	regulator_enable(bbqX0kbd_data->vdd_reg);
-
-	mdelay(10);
+	msleep(10);
 
 	regulator_enable(bbqX0kbd_data->v18_reg);
 	regulator_enable(bbqX0kbd_data->v28_reg);
-
 	msleep(400);
 
 	bbqX0kbd_data->regmap = devm_regmap_init_i2c(client, &bbqX0kbd_i2c_regmap);
@@ -363,7 +358,7 @@ static int bbqX0kbd_probe(struct i2c_client *client, const struct i2c_device_id 
 		return PTR_ERR(bbqX0kbd_data->regmap);
 	}
 
-	rc = regmap_write(bbqX0kbd_data->regmap, REG_RST, 0);
+	rc = regmap_write(bbqX0kbd_data->regmap, BBQX0KBD_WRITE_MASK | REG_RST, 0);
 	if (rc < 0) {
 		dev_err(&client->dev, "%s Could not Reset BBQX0KBD. Error: %d\n", __func__, rc);
 		return -ENODEV;
@@ -377,13 +372,15 @@ static int bbqX0kbd_probe(struct i2c_client *client, const struct i2c_device_id 
 	}
 	dev_info(&client->dev, "%s BBQX0KBD Software version: 0x%02X\n", __func__, bbqX0kbd_data->version_number);
 
-	rc = regmap_write(bbqX0kbd_data->regmap, REG_CFG, REG_CFG_DEFAULT_SETTING);
+	rc = regmap_write(bbqX0kbd_data->regmap, BBQX0KBD_WRITE_MASK | REG_CFG,
+			  REG_CFG_DEFAULT_SETTING);
 	if (rc != 0) {
 		dev_err(&client->dev, "%s Could not write configuration to BBQX0KBD. Error: %d\n", __func__, rc);
 		return -ENODEV;
 	}
 
-	rc = regmap_write(bbqX0kbd_data->regmap, REG_CF2, REG_CFG2_DEFAULT_SETTING);
+	rc = regmap_write(bbqX0kbd_data->regmap, BBQX0KBD_WRITE_MASK | REG_CF2,
+			  REG_CFG2_DEFAULT_SETTING);
 	if (rc < 0) {
 		dev_err(&client->dev, "%s Could not write configuration 2 to BBQX0KBD. Error: %d\n", __func__, rc);
 		return -ENODEV;
@@ -485,7 +482,7 @@ static int bbqX0kbd_remove(struct i2c_client *client)
 	struct bbqX0kbd_data *bbqX0kbd_data = i2c_get_clientdata(client);
 	int rc;
 
-	rc = regmap_write(bbqX0kbd_data->regmap, REG_BKL, 0);
+	rc = regmap_write(bbqX0kbd_data->regmap, BBQX0KBD_WRITE_MASK | REG_BKL, 0);
 	if (rc != 0) {
 		dev_err(&client->dev, "%s Could not write to BBQX0KBD Backlight. Error: %d\n", __func__, rc);
 		return rc;
@@ -509,8 +506,7 @@ static int bbqX0kbd_suspend(struct device *dev)
 	bbqX0kbd_data->suspended = true;
 
 	/* Turn off backlight to save power */
-	rc =
-		regmap_write(bbqX0kbd_data->regmap, REG_BKL, 0);
+	rc = regmap_write(bbqX0kbd_data->regmap, BBQX0KBD_WRITE_MASK | REG_BKL, 0);
 	if (rc != 0) {
 		pr_err("%s Could not write to BBQX0KBD Backlight. Error: %d\n", __func__, rc);
 		return 0;
@@ -539,28 +535,24 @@ static int bbqX0kbd_resume(struct device *dev)
 
 		mdelay(400);
 
-		rc = regmap_write(bbqX0kbd_data->regmap, REG_CFG, REG_CFG_DEFAULT_SETTING);
+		rc = regmap_write(bbqX0kbd_data->regmap, BBQX0KBD_WRITE_MASK | REG_CFG,
+				  REG_CFG_DEFAULT_SETTING);
 		if (rc != 0) {
 			pr_err("%s Could not write configuration to BBQX0KBD. Error: %d\n",
 			       __func__, rc);
 		}
 
-		rc = regmap_write(bbqX0kbd_data->regmap, REG_CF2, REG_CFG2_DEFAULT_SETTING);
+		rc = regmap_write(bbqX0kbd_data->regmap, BBQX0KBD_WRITE_MASK | REG_CF2,
+				  REG_CFG2_DEFAULT_SETTING);
 		if (rc != 0) {
 			pr_err("%s Could not write configuration 2 to BBQX0KBD. Error: %d\n",
 			       __func__, rc);
 		}
 	}
 
-	/* Restore backlight level */
-	rc = regmap_write(bbqX0kbd_data->regmap, REG_BKL, 255);
-	if (rc != 0) {
-		pr_err("%s Could not write to BBQX0KBD Backlight. Error: %d\n", __func__, rc);
-	}
-
 	bbqX0kbd_data->suspended = false;
 
-	rc = regmap_write(bbqX0kbd_data->regmap, REG_INT, 0);
+	rc = regmap_write(bbqX0kbd_data->regmap, BBQX0KBD_WRITE_MASK | REG_INT, 0);
 	if (rc < 0)
 		pr_err("%s Could not clear REG_INT. Error: %d\n", __func__, rc);
 
@@ -605,7 +597,6 @@ module_init(bbqX0kbd_init);
 
 static void __exit bbqX0kbd_exit(void)
 {
-	pr_info("%s Exiting BBQX0KBD.\n", __func__);
 	i2c_del_driver(&bbqX0kbd_driver);
 }
 module_exit(bbqX0kbd_exit);
