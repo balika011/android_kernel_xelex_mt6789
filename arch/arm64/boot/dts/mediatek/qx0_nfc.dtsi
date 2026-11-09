@@ -1,0 +1,12 @@
+&i2c3 {
+	st21nfc: st21nfc@08 {
+		compatible = "st,st21nfc";
+		reg = <0x08>;
+		interrupt-parent = <&pio>;
+		interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+		reset-gpios = <&pio 150 0x00>;
+		irq-gpios = <&pio 1 0x0>;
+		clkreq-gpios = <&pio 68 0x00>;
+		status = "ok";
+	};	
+};

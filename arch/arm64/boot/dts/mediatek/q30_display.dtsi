@@ -1,0 +1,31 @@
+#include "qx0_display.dtsi"
+
+&mtk_leds {
+	compatible = "mediatek,pwm-leds";
+
+	backlight {
+		label = "lcd-backlight";
+		max-brightness = <255>;
+		max-hw-brightness = <1023>;
+		led_mode = <5>;
+		gate_enable = <0>;
+		pwm_config = <0 1 0 0 0>;
+		pwms = <&disp_pwm 0 39385>;
+		pwm-names = "lcd-backlight";
+	};
+};
+
+&dsi0 {
+	panel1@0 {
+		compatible = "mediatek,q30_panel_general,vdo";
+		board_name = "q30_v1";
+	};
+};
+
+&i2c0 {
+	synaptics_dsx_i2c_display@67 {
+		synaptics,reset-delay-ms = <60>;
+		synaptics,reset-active-ms = <200>;
+		synaptics,firmware = "passport_display.bin";
+	};
+};

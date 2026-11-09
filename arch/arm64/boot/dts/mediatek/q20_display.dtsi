@@ -1,0 +1,37 @@
+#include "qx0_display.dtsi"
+
+&mtk_leds {
+	compatible = "mediatek,i2c-leds";
+
+	backlight {
+		max-hw-brightness = <25>;
+		led_mode = <6>;
+		gate_enable = <0>;
+		pwm_config = <0 1 0 0 0>;
+	};
+};
+
+&dsi0 {
+	panel1@0 {
+		compatible = "mediatek,q20_panel_general,vdo";
+		avdd-gpios  = <&pio 156 0>;
+		board_name = "q20_v12";
+	};
+};
+
+&i2c7 {
+	i2c_lcd_bias_mtk:i2c_lcd_bias@3e {
+		compatible = "mediatek,mtk-gateic-drv-ocp2131";
+		reg = <0x3e>;
+		id = <6>;
+		gate-power-gpios = <&pio 84 0>;
+		status = "okay";
+	};
+};
+
+&i2c0 {
+	synaptics_dsx_i2c_display@67 {
+		synaptics,reset-delay-ms = <200>;
+		synaptics,reset-active-ms = <20>;
+	};
+};

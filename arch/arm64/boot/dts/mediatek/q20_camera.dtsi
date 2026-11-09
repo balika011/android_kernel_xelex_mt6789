@@ -1,0 +1,15 @@
+#include "mediatek/cust_mt6789_camera.dtsi"
+#include "mediatek/cust_mt6789_camera_v4l2.dtsi"
+
+&kd_camera_hw1 {
+	cam0_enable_sensor = "s5kjn1_mipi_raw";
+	cam1_enable_sensor = "imx111_mipi_raw";
+};
+
+&i2c7 {
+	mtk_camera_eeprom0: camera_eeprom0@50 {
+		compatible = "mediatek,camera_eeprom";
+		reg = <0x50>;
+		status = "okay";
+	};
+};

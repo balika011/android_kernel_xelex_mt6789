@@ -1,27 +1,4 @@
-// SPDX-License-Identifier: (GPL-2.0 OR MIT)
-/*
- * Copyright (C) 2021 MediaTek Inc.
- */
-/dts-v1/;
-/plugin/;
-#include <dt-bindings/interrupt-controller/arm-gic.h>
-#include <dt-bindings/interrupt-controller/irq.h>
-#include <dt-bindings/pinctrl/mt6789-pinfunc.h>
-#include <dt-bindings/usb/pd.h>
-#include <dt-bindings/phy/phy.h>
-#include <dt-bindings/iio/mt635x-auxadc.h>
-#include "mediatek/cust_mt6789_camera.dtsi"
 
-&mtk_leds {
-	compatible = "mediatek,pwm-leds";
-
-	backlight {
-		led_mode = <5>;
-		pwms = <&disp_pwm 0 393850>;
-		pwm-names = "lcd-backlight";
-		pwm_config = <0 1 0 0 0>;
-	};
-};
 
 &odm {
 	leds {
@@ -51,121 +28,6 @@
 			retain-state-suspended;
 		};
 	};
-
-	display_ldo: fixed-regulator-1 {
-		compatible = "regulator-fixed";
-		regulator-name = "display_ldo";
-		gpio = <&pio 27 0>;
-		enable-active-high;
-	};
-
-	bbqX0kbd_vdd_ldo: fixed-regulator-2 {
-		compatible = "regulator-fixed";
-		regulator-name = "bbqX0kbd_vdd_ldo";
-		gpio = <&pio 159 0>;
-		enable-active-high;
-	};
-
-	bbqX0kbd_1v8_ldo: fixed-regulator-3 {
-		compatible = "regulator-fixed";
-		regulator-name = "bbqX0kbd_1v8_ldo";
-		gpio = <&pio 157 0>;
-		enable-active-high;
-	};
-
-	bbqX0kbd_2v8_ldo: fixed-regulator-4 {
-		compatible = "regulator-fixed";
-		regulator-name = "bbqX0kbd_2v8_ldo";
-		gpio = <&pio 158 0>;
-		enable-active-high;
-	};
-};
-
-&pio {
-	mtkfb_pins_lcm_led_en1: lcm_led_en1_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO156__FUNC_GPIO156>;
-			slew-rate = <1>;
-			output-high;
-		};
-	};
-
-	mtkfb_pins_lcm_led_en0: lcm_led_en0_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO156__FUNC_GPIO156>;
-			slew-rate = <1>;
-			output-low;
-		};
-	};
-
-	mtkfb_pins_lcm_rst_out1_gpio: lcm_rst_out1_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO85__FUNC_GPIO85>;
-			slew-rate = <1>;
-			output-high;
-		};
-	};
-
-	mtkfb_pins_lcm_rst_out0_gpio: lcm_rst_out0_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO85__FUNC_GPIO85>;
-			slew-rate = <1>;
-			output-low;
-		};
-	};
-	mtkfb_pins_lcm_dsi_te: lcm_dsi_te {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO83__FUNC_DSI_TE>;
-		};
-	};
-};
-
-&mtkfb {
-	pinctrl-names = "lcm_led_en1_gpio", "lcm_led_en0_gpio",
-		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
-		"mode_te_te";
-	pinctrl-0 = <&mtkfb_pins_lcm_led_en1>;
-	pinctrl-1 = <&mtkfb_pins_lcm_led_en0>;
-	pinctrl-2 = <&mtkfb_pins_lcm_rst_out1_gpio>;
-	pinctrl-3 = <&mtkfb_pins_lcm_rst_out0_gpio>;
-	pinctrl-4 = <&mtkfb_pins_lcm_dsi_te>;
-	status = "okay";
-};
-
-&dispsys_config {
-	pinctrl-names =
-		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
-		"mode_te_te";
-	pinctrl-0 = <&mtkfb_pins_lcm_rst_out1_gpio>;
-	pinctrl-1 = <&mtkfb_pins_lcm_rst_out0_gpio>;
-	pinctrl-2 = <&mtkfb_pins_lcm_dsi_te>;
-	status = "okay";
-};
-
-&dsi0 {
-	status = "okay";
-	#address-cells = <1>;
-	#size-cells = <0>;
-	
-	panel1@0 {
-		compatible = "mediatek,q20_panel_general,vdo";
-		reg = <0>;
-		reset-gpios = <&pio 85 0>;
-		avdd-gpios  = <&pio 156 0>;
-		port {
-			panel_in1: endpoint {
-				remote-endpoint = <&dsi_out>;
-			};
-		};
-		
-	};
-	ports {
-		port {
-			dsi_out: endpoint {
-				remote-endpoint = <&panel_in1>;
-			};
-		};
-	};
 };
 
 &accdet {
@@ -175,86 +37,11 @@
 	accdet-plugout-debounce = <1>;
 	/*1:ACC mode, 2:low cost without in bias, 6:low cost with in bias*/
 	accdet-mic-mode = <1>;
-	/* eint_level_trigger: 8,LEVEL_LOW(DEF) ;4,LV_HIGH;others,LV_LOW */
-	headset-eint-level-pol = <4>;
 	/*0--MD_MAX--UP_MAX--DW_MAX*/
 	headset-three-key-threshold = <0 80 220 400>;
 	headset-three-key-threshold-CDD = <0 121 192 600>;
 	/*0--MD_MAX--VOICE_MAX--UP_MAX--DW_MAX*/
 	headset-four-key-threshold = <0 58 121 192 400>;
-};
-
-/* GPS GPIO standardization start */
-&pio {
-	gps_pins_default: gps_default {
-	};
-	gps_l1_lna_pins_ol: gps_l1_lna@0 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO25__FUNC_GPIO25>;
-			output-low;
-		};
-	};
-	gps_l1_lna_pins_dsp_ctrl: gps_l1_lna@1 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO25__FUNC_GPS_L1_ELNA_EN>;
-		};
-	};
-	gps_l1_lna_pins_oh: gps_l1_lna@2 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO25__FUNC_GPIO25>;
-			output-high;
-		};
-	};
-	gps_l5_lna_pins_ol: gps_l5_lna@0 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO87__FUNC_GPIO87>;
-			output-low;
-		};
-	};
-	gps_l5_lna_pins_dsp_ctrl: gps_l5_lna@1 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO87__FUNC_GPS_L5_ELNA_EN>;
-		};
-	};
-	gps_l5_lna_pins_oh: gps_l5_lna@2 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO87__FUNC_GPIO87>;
-			output-high;
-		};
-	};
-};
-
-&gps {
-	pinctrl-names = "default",
-		"gps_l1_lna_disable",
-		"gps_l1_lna_dsp_ctrl",
-		"gps_l1_lna_enable",
-		"gps_l5_lna_disable",
-		"gps_l5_lna_dsp_ctrl",
-		"gps_l5_lna_enable";
-	pinctrl-0 = <&gps_pins_default>;
-	pinctrl-1 = <&gps_l1_lna_pins_ol>;
-	pinctrl-2 = <&gps_l1_lna_pins_dsp_ctrl>;
-	pinctrl-3 = <&gps_l1_lna_pins_oh>;
-	pinctrl-4 = <&gps_l5_lna_pins_ol>;
-	pinctrl-5 = <&gps_l5_lna_pins_dsp_ctrl>;
-	pinctrl-6 = <&gps_l5_lna_pins_oh>;
-	status = "okay";
-};
-/* GPS GPIO standardization end */
-#include "mediatek/cust_mt6789_camera_v4l2.dtsi"
-
-&i2c6 {
-	bbqX0kbd@1f {
-		compatible = "wallComputer,bbqX0kbd";
-		reg = <0x1f>;
-		interrupt-parent = <&pio>;
-		interrupts = <12 IRQ_TYPE_EDGE_FALLING>;
-		vdd-supply = <&bbqX0kbd_vdd_ldo>;
-		1v8-supply = <&bbqX0kbd_1v8_ldo>;
-		2v8-supply = <&bbqX0kbd_2v8_ldo>;
-		firmware-download-gpios = <&pio 47 0>;
-	};
 };
 
 &pdc {
@@ -324,7 +111,7 @@
 	start_vbat_max = <4300>;
 	idvchg_term = <500>;
 	idvchg_step = <50>;
-	ita_level = <2500 2000 1700 1500>;
+	ita_level = <3000 2500 2000 1500>;
 	rcable_level = <250 300 375 500>;
 	ita_level_dual = <5000 3700 3400 3000>;
 	rcable_level_dual = <230 350 450 550>;
@@ -343,16 +130,12 @@
 	force_ta_cv_vbat = <4400>;
 	chg_time_max = <5400>;
 	tta_level_def = <0 0 0 0 25 50 60 70 80>;
-	tta_curlmt = <0 0 0 0 0 300 600 900 (-1)>;
 	tta_recovery_area = <3>;
 	tbat_level_def = <0 0 0 5 25 40 43 46 50>;
-	tbat_curlmt = <(-1) (-1) (-1) 300 0 600 900 1050 (-1)>;
 	tbat_recovery_area = <3>;
-	tdvchg_level_def = <0 0 0 5 25 55 60 65 70>;
-	tdvchg_curlmt = <(-1) (-1) (-1) 300 0 300 600 900 (-1)>;
+	tdvchg_level_def = <0 0 0 5 25 65 70 75 90>;
 	tdvchg_recovery_area = <3>;
 	tswchg_level_def = <0 0 0 5 25 65 70 75 80>;
-	tswchg_curlmt = <(-1) (-1) (-1) 200 0 200 300 400 (-1)>;
 	tswchg_recovery_area = <3>;
 	ifod_threshold = <200>;
 	rsw_min = <20>;
@@ -364,22 +147,6 @@
 	support_ta = "pca_ta_pps", "pd_adapter";
 	allow_not_check_ta_status;
 	vbat_threshold = <4250>;
-};
-
-&i2c0 {
-	synaptics_dsx_i2c_display@67 {
-		compatible = "synaptics,dsx";
-		reg = <0x67>;
-		vdd-supply = <&display_ldo>;
-		synaptics,pwr-reg-name = "vdd";
-		synaptics,input-device-name = "touch_display";
-		synaptics,irq-gpio = <&pio 9 0>;
-		synaptics,irq-flags = <0x2008>;
-		synaptics,reset-gpio = <&pio 152 0>;
-		synaptics,reset-on-state = <0>;
-		synaptics,reset-delay-ms = <200>;
-		synaptics,reset-active-ms = <20>;
-	};
 };
 
 &mtk_gauge {
@@ -397,34 +164,7 @@
 	vbus-current = <0>;
 };
 
-&i2c3 {
-	oca72xxx_pa@58 {
-		compatible = "ocs,oca72xxx_pa";
-		reg = <0x58>;
-		dev_index = < 0 >;
-		status = "okay";
-	};
-
-	st21nfc: st21nfc@08 {
-		compatible = "st,st21nfc";
-		reg = <0x08>;
-		interrupt-parent = <&pio>;
-		interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
-		reset-gpios = <&pio 150 0x00>;
-		irq-gpios = <&pio 1 0x0>;
-		clkreq-gpios = <&pio 68 0x00>;
-		status = "ok";
-	};	
-};
-
 &i2c5 {
-	aw87xxx_pa@58 {
-		compatible = "awinic,aw87xxx_pa";
-		reg = <0x58>;
-		dev_index = < 0 >;
-		status = "okay";
-	};
-
 	upm6922_chg:upm6922@6B {
 		status = "okay";
 		compatible = "up,upm6922_charger";
@@ -484,6 +224,8 @@
 		upm6722,tsbus-flt-threshold = <4102>;		/* unit: 0.001% */
 		upm6722,tsbat-flt-threshold = <4102>;		/* unit: 0.001% */
 
+		upm6722,bat-ocp-alm-disable;
+
 		upm6722,bat-ovp-alm-threshold = <4510>;		/* unit: 1mV */
 		upm6722,bat-ocp-alm-threshold = <8000>;		/* unit: 1mA */
 		upm6722,bat-ucp-alm-threshold = <0>;		/* unit: 1mA */
@@ -505,9 +247,7 @@
 		upm6722,adc-avg-init = <0>;
 		upm6722,adc-sample-bit = <0>;
 	};
-};
 
-&i2c5 {
 	upm7610@60 {
 		compatible = "up,upm7610";
 		reg = <0x60>;
@@ -624,19 +364,3 @@
 		};
 	};
 };
-
-&kd_camera_hw1 {
-	cam0_enable_sensor = "s5kjn1_mipi_raw";
-	cam1_enable_sensor = "imx111_mipi_raw";
-};
-
-&i2c7 {
-	mtk_camera_eeprom0: camera_eeprom0@50 {
-		compatible = "mediatek,camera_eeprom";
-		reg = <0x50>;
-		status = "okay";
-	};
-};
-
-#include "q20_v1_factory/cust.dtsi"
-/*End of this file, DO NOT ADD ANYTHING HERE*/

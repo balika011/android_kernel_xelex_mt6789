@@ -1,0 +1,102 @@
+&odm {
+	leds {
+		keyboard {
+			label = "keyboard-backlight";
+			gpios = <&pio 151 0>;
+			default-state = "off";
+			linux,default-trigger = "kbd-backlight";
+		};
+	};
+
+	keypad_ldo: fixed-regulator-0 {
+		compatible = "regulator-fixed";
+		regulator-name = "keypad_ldo";
+		gpio = <&pio 159 0>;
+		enable-active-high;
+	};
+};
+
+&i2c6 {
+	synaptics_dsx_i2c_keypad@20 {
+		compatible = "synaptics,dsx";
+		reg = <0x20>;
+		vdd-supply = <&keypad_ldo>;
+		synaptics,pwr-reg-name = "vdd";
+		synaptics,input-device-name = "touch_keypad";
+		synaptics,irq-gpio = <&pio 12 0>;
+		synaptics,irq-flags = <0x2008>;
+		synaptics,reset-gpio = <&pio 31 0>;
+		synaptics,reset-on-state = <0>;
+		synaptics,reset-delay-ms = <63>;
+		synaptics,reset-active-ms = <1>;
+		synaptics,touchpad;
+		synaptics,firmware = "passport_keyboard.bin";
+		synaptics,flash-only-bricked;
+	};
+};
+
+&i2c2 {
+	status = "okay";
+	keypad_gpio: aw95016_ex@20 {
+		compatible = "awinic,aw95016a";
+		reg = <0x20>;
+		reset-gpio = <&pio 153 0>;
+		interrupt-parent = <&pio>;
+		interrupts = <4 IRQ_TYPE_EDGE_FALLING>;
+		gpio-controller;
+		interrupt-controller;
+		#gpio-cells = <2>;
+		#interrupt-cells = <2>;
+		status = "okay";
+	};
+};
+
+&odm {
+	keypad {
+		compatible = "gpio-matrix-keypad";
+		row-gpios = <&keypad_gpio 4 0>,
+			<&keypad_gpio 3 0>,
+			<&keypad_gpio 2 0>,
+			<&keypad_gpio 5 0>,
+			<&keypad_gpio 6 0>,
+			<&keypad_gpio 7 0>;
+		column-gpios = <&keypad_gpio 8 0>,
+			<&keypad_gpio 9 0>,
+			<&keypad_gpio 10 0>,
+			<&keypad_gpio 11 0>,
+			<&keypad_gpio 12 0>;
+		keypad,num-rows = <6>;
+		keypad,num-columns = <5>;
+		keypad,debounce-ms = <5>;
+		linux,keypad-no-autorepeat;
+		linux,keymap = <0x02000010 /* row: 2 column: 0 keycode: KEY_Q */
+				0x02010011 /* row: 2 column: 1 keycode: KEY_W */
+				0x02020012 /* row: 2 column: 2 keycode: KEY_E */
+				0x02030013 /* row: 2 column: 3 keycode: KEY_R */
+				0x02040014 /* row: 2 column: 4 keycode: KEY_T */
+				0x03000015 /* row: 3 column: 0 keycode: KEY_Y */
+				0x03010016 /* row: 3 column: 1 keycode: KEY_U */
+				0x03020017 /* row: 3 column: 2 keycode: KEY_I */
+				0x03030018 /* row: 3 column: 3 keycode: KEY_O */
+				0x03040019 /* row: 3 column: 4 keycode: KEY_P */
+				0x0100001e /* row: 1 column: 0 keycode: KEY_A */
+				0x0101001f /* row: 1 column: 1 keycode: KEY_S */
+				0x01020020 /* row: 1 column: 2 keycode: KEY_D */
+				0x01030021 /* row: 1 column: 3 keycode: KEY_F */
+				0x01040022 /* row: 1 column: 4 keycode: KEY_G */
+				0x04000023 /* row: 4 column: 0 keycode: KEY_H */
+				0x04010024 /* row: 4 column: 1 keycode: KEY_J */
+				0x04020025 /* row: 4 column: 2 keycode: KEY_K */
+				0x04030026 /* row: 4 column: 3 keycode: KEY_L */
+				0x0404000e /* row: 4 column: 4 keycode: KEY_BACKSPACE */
+				0x0000002c /* row: 0 column: 0 keycode: KEY_Z */
+				0x0001002d /* row: 0 column: 1 keycode: KEY_X */
+				0x0002002e /* row: 0 column: 2 keycode: KEY_C */
+				0x0003002f /* row: 0 column: 3 keycode: KEY_V */
+				0x00040039 /* row: 0 column: 4 keycode: KEY_SPACE */
+				0x05010030 /* row: 5 column: 1 keycode: KEY_B */
+				0x05020031 /* row: 5 column: 2 keycode: KEY_N */
+				0x05030032 /* row: 5 column: 3 keycode: KEY_M */
+				0x0504001c>; /* row: 5 column: 4 keycode: KEY_ENTER */
+	};
+};

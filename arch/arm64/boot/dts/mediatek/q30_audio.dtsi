@@ -1,0 +1,24 @@
+&i2c3 {
+	oca72xxx_pa@58 {
+		compatible = "ocs,oca72xxx_pa";
+		reg = <0x58>;
+		dev_index = < 1 >;
+		status = "okay";
+	};
+
+	oca72xxx_pa@5b {
+		compatible = "ocs,oca72xxx_pa";
+		reg = <0x5b>;
+		dev_index = < 0 >;
+		status = "okay";
+	};
+};
+
+&i2c5 {
+	aw87xxx_pa@58 {
+		compatible = "awinic,aw87xxx_pa";
+		reg = <0x58>;
+		dev_index = < 0 >;
+		status = "okay";
+	};
+};
