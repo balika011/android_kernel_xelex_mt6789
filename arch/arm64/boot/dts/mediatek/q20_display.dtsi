@@ -13,7 +13,7 @@
 
 &dsi0 {
 	panel1@0 {
-		compatible = "mediatek,q20_panel_general,vdo";
+		compatible = "innolux,pd035sc-01a";
 		avdd-gpios  = <&pio 156 0>;
 		board_name = "q20_v12";
 	};

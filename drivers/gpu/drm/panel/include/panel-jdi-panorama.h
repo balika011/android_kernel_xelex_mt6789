@@ -1,11 +1,5 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/*
- * Copyright (c) 2021 MediaTek Inc.
- */
-
-#ifndef PANEL_Q30_HD1440_LCM_DSI_VDO
-#define PANEL_Q30_HD1440_LCM_DSI_VDO
-
+#ifndef PANEL_JDI_PANORAMA
+#define PANEL_JDI_PANORAMA
 
 #define REGFLAG_CMD             0xFFFA
 #define REGFLAG_DELAY           0xFFFC
@@ -29,10 +23,6 @@
 #define VBP                         16
 #define VFP                         30
 
-#define FPS                  60
+#define FPS                         60
 
-
-/*Parameter setting for mode 0 End*/
-
-
-#endif //end of PANEL_Q30_HD1440_LCM_DSI_VDO
+#endif //end of PANEL_JDI_PANORAMA

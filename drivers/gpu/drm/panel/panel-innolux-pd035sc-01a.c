@@ -1,7 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0
-/*
- * Copyright (c) 2019 MediaTek Inc.
- */
 
 #include <drm/drm_modes.h>
 #include <linux/delay.h>
@@ -27,25 +24,16 @@
 #include "../mediatek/mediatek_v2/mtk_drm_graphics_base.h"
 #include "../mediatek/mediatek_v2/mtk_log.h"
 #include "../mediatek/mediatek_v2/mtk_panel_ext.h"
-#include "include/panel-q20-hd720-lcm-dsi-vdo.h"
+#include "include/panel-innolux-pd035sc-01a.h"
 #endif
-
-/*add by hodafone begin*/
-#include <linux/proc_fs.h> 
-#include <linux/seq_file.h>
-#include <linux/of_gpio.h>
-#include <linux/of.h>
-#define PROC_NAME	"hodafone_lcm"
-static struct proc_dir_entry *lcm_proc_entry;
-/*add by hodafone end*/
 
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
 #include "../mediatek/mtk_corner_pattern/mtk_data_hw_roundedpattern.h"
 #endif
 
-#define LCM_NAME "panel-q20_hd720_lcm_dsi_vdo"
+#define LCM_NAME "panel-innolux_pd035sc-01a"
 
-struct hodafone_lcm {
+struct lcm {
 	struct device *dev;
 	struct drm_panel panel;
 	struct backlight_device *backlight;
@@ -54,45 +42,31 @@ struct hodafone_lcm {
 
 	bool prepared;
 	bool enabled;
-	
-	char *board_name;
 
 	int error;
 };
 
-static struct hodafone_lcm *mlocalctx = NULL;
-
-#define lcm_dcs_write_seq(ctx, seq...)                                         \
-	({                                                                     \
-		const u8 d[] = {seq};                                          \
-		BUILD_BUG_ON_MSG(ARRAY_SIZE(d) > 64,                           \
+#define lcm_dcs_write_seq(ctx, seq...)                         \
+	({                                                         \
+		const u8 d[] = {seq};                                  \
+		BUILD_BUG_ON_MSG(ARRAY_SIZE(d) > 64,                   \
 				 "DCS sequence too big for stack");            \
-		lcm_dcs_write(ctx, d, ARRAY_SIZE(d));                          \
+		lcm_dcs_write(ctx, d, ARRAY_SIZE(d));                  \
 	})
 
-#define lcm_dcs_write_seq_static(ctx, seq...)                                  \
-	({                                                                     \
-		static const u8 d[] = {seq};                                   \
-		lcm_dcs_write(ctx, d, ARRAY_SIZE(d));                          \
+#define lcm_dcs_write_seq_static(ctx, seq...)                  \
+	({                                                         \
+		static const u8 d[] = {seq};                           \
+		lcm_dcs_write(ctx, d, ARRAY_SIZE(d));                  \
 	})
 
-static inline struct hodafone_lcm *panel_to_hodafone_lcm(struct drm_panel *panel)
+static inline struct lcm *panel_to_lcm(struct drm_panel *panel)
 {
-	return container_of(panel, struct hodafone_lcm, panel);
-}
-
-#define HODAFONE_Q20_V12_BOARD_NAME "q20_v12"
-int is_board_q20_v12(struct hodafone_lcm *ctx) {
-	if (ctx->board_name && (0 == strcmp(HODAFONE_Q20_V12_BOARD_NAME, ctx->board_name))) {
-		
-		return 1;
-	}
-
-	return 0;
+	return container_of(panel, struct lcm, panel);
 }
 
 #if 0
-static void lcm_dcs_write(struct hodafone_lcm *ctx, const void *data, size_t len)
+static void lcm_dcs_write(struct lcm *ctx, const void *data, size_t len)
 {
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
 	ssize_t ret;
@@ -113,7 +87,38 @@ static void lcm_dcs_write(struct hodafone_lcm *ctx, const void *data, size_t len
 }
 #endif
 
-static void lcm_panel_init(struct hodafone_lcm *ctx)
+#ifdef PANEL_SUPPORT_READBACK
+static int lcm_dcs_read(struct lcm *ctx, u8 cmd, void *data, size_t len)
+{
+	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
+	ssize_t ret;
+
+	if (ctx->error < 0)
+		return 0;
+
+	ret = mipi_dsi_dcs_read(dsi, cmd, data, len);
+	if (ret < 0) {
+		dev_err(ctx->dev, "error %d reading dcs seq:(%#x)\n", ret, cmd);
+		ctx->error = ret;
+	}
+
+	return ret;
+}
+
+static void lcm_panel_get_data(struct lcm *ctx)
+{
+	u8 buffer[3] = {0};
+	static int ret;
+
+	if (ret == 0) {
+		ret = lcm_dcs_read(ctx, 0x0A, buffer, 1);
+		dev_err(ctx->dev, "return %d data(0x%08x) to dsi engine\n",
+			 ret, buffer[0] | (buffer[1] << 8));
+	}
+}
+#endif
+
+static void lcm_panel_init(struct lcm *ctx)
 {
 #if 0
 	lcm_dcs_write_seq_static(ctx, 0x00,0x00);
@@ -178,40 +183,9 @@ static void lcm_panel_init(struct hodafone_lcm *ctx)
 #endif
 }
 
-#ifdef PANEL_SUPPORT_READBACK
-static int lcm_dcs_read(struct hodafone_lcm *ctx, u8 cmd, void *data, size_t len)
-{
-	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
-	ssize_t ret;
-
-	if (ctx->error < 0)
-		return 0;
-
-	ret = mipi_dsi_dcs_read(dsi, cmd, data, len);
-	if (ret < 0) {
-		dev_err(ctx->dev, "error %d reading dcs seq:(%#x)\n", ret, cmd);
-		ctx->error = ret;
-	}
-
-	return ret;
-}
-
-static void lcm_panel_get_data(struct hodafone_lcm *ctx)
-{
-	u8 buffer[3] = {0};
-	static int ret;
-
-	if (ret == 0) {
-		ret = lcm_dcs_read(ctx, 0x0A, buffer, 1);
-		dev_err(ctx->dev, "return %d data(0x%08x) to dsi engine\n",
-			 ret, buffer[0] | (buffer[1] << 8));
-	}
-}
-#endif
-
 static int lcm_disable(struct drm_panel *panel)
 {
-	struct hodafone_lcm *ctx = panel_to_hodafone_lcm(panel);
+	struct lcm *ctx = panel_to_lcm(panel);
 
 	//pr_err("%s\n", __func__);
 	if (!ctx->enabled)
@@ -229,7 +203,7 @@ static int lcm_disable(struct drm_panel *panel)
 
 static int lcm_unprepare(struct drm_panel *panel)
 {
-	struct hodafone_lcm *ctx = panel_to_hodafone_lcm(panel);
+	struct lcm *ctx = panel_to_lcm(panel);
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
 	int ret;
 
@@ -251,13 +225,12 @@ static int lcm_unprepare(struct drm_panel *panel)
 		return ret;
 	}
 		
-	if (is_board_q20_v12(ctx)) {
-		dev_err(ctx->dev, "Q20 V12 board not poweroff\n");
-	} else {
-		dev_err(ctx->dev, "Q20 V1 board poweroff\n");
-		gpiod_set_value(ctx->reset_gpio, 0);
-		gpiod_set_value(ctx->avdd, 0);
-	}
+
+#if 0
+	dev_err(ctx->dev, "Q20 V1 board poweroff\n");
+	gpiod_set_value(ctx->reset_gpio, 0);
+	gpiod_set_value(ctx->avdd, 0);
+#endif
 
 	ctx->error = 0;
 	ctx->prepared = false;
@@ -267,15 +240,14 @@ static int lcm_unprepare(struct drm_panel *panel)
 
 static int lcm_prepare(struct drm_panel *panel)
 {
-	struct hodafone_lcm *ctx = panel_to_hodafone_lcm(panel);
+	struct lcm *ctx = panel_to_lcm(panel);
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
 	int ret;
-	
 
 	//pr_info("%s\n", __func__);
 	if (ctx->prepared)
 		return 0;
-	
+
 	gpiod_set_value(ctx->avdd, 1);
 	mdelay(15);
 	gpiod_set_value(ctx->reset_gpio, 1);
@@ -284,9 +256,9 @@ static int lcm_prepare(struct drm_panel *panel)
 	mdelay(10);
 	gpiod_set_value(ctx->reset_gpio, 1);
 	mdelay(120);
-	
+
 	lcm_panel_init(ctx);
-	
+
 	/* Exit sleep mode */
 	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
 	if (ret) {
@@ -309,6 +281,7 @@ static int lcm_prepare(struct drm_panel *panel)
 		lcm_unprepare(panel);
 
 	ctx->prepared = true;
+
 #if defined(CONFIG_MTK_PANEL_EXT)
 	mtk_panel_tch_rst(panel);
 #endif
@@ -321,7 +294,7 @@ static int lcm_prepare(struct drm_panel *panel)
 
 static int lcm_enable(struct drm_panel *panel)
 {
-	struct hodafone_lcm *ctx = panel_to_hodafone_lcm(panel);
+	struct lcm *ctx = panel_to_lcm(panel);
 
 	//pr_err("%s\n", __func__);
 	if (ctx->enabled)
@@ -339,27 +312,27 @@ static int lcm_enable(struct drm_panel *panel)
 
 
 #define PCLK_MODE0_IN_KHZ \
-    ((FRAME_WIDTH + MODE_0_HFP + HSA + HBP)*(FRAME_HEIGHT + MODE_0_VFP + VSA + VBP)*(60)/1000)
+      ((FRAME_WIDTH + HFP + HSA + HBP) * (FRAME_HEIGHT + VFP + VSA + VBP) * FPS / 1000)
 
 static const struct drm_display_mode default_mode = {
 	.clock = PCLK_MODE0_IN_KHZ,
 	.hdisplay = FRAME_WIDTH,
-	.hsync_start = FRAME_WIDTH + MODE_0_HFP,
-	.hsync_end = FRAME_WIDTH + MODE_0_HFP + HSA,
-	.htotal = FRAME_WIDTH + MODE_0_HFP + HSA + HBP,
+	.hsync_start = FRAME_WIDTH + HFP,
+	.hsync_end = FRAME_WIDTH + HFP + HSA,
+	.htotal = FRAME_WIDTH + HFP + HSA + HBP,
 	.vdisplay = FRAME_HEIGHT,
-	.vsync_start = FRAME_HEIGHT + MODE_0_VFP,
-	.vsync_end = FRAME_HEIGHT + MODE_0_VFP + VSA,
-	.vtotal = FRAME_HEIGHT + MODE_0_VFP + VSA + VBP,
+	.vsync_start = FRAME_HEIGHT + VFP,
+	.vsync_end = FRAME_HEIGHT + VFP + VSA,
+	.vtotal = FRAME_HEIGHT + VFP + VSA + VBP,
 };
 
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 
 static struct mtk_panel_params ext_params = {
-	.pll_clk = DATA_RATE/2,
-	.data_rate = DATA_RATE,
-	.data_rate_khz = DATA_RATE*1000,
+	.pll_clk = PLL_CLK,
+	.data_rate = PLL_CLK*2,
+	.data_rate_khz = PLL_CLK*2*1000,
 	.vfp_low_power = 750,
 	.cust_esd_check = 0,
 	.esd_check_enable = 0,
@@ -372,7 +345,7 @@ static struct mtk_panel_params ext_params = {
 
 static int panel_ext_reset(struct drm_panel *panel, int on)
 {
-	struct hodafone_lcm *ctx = panel_to_hodafone_lcm(panel);
+	struct lcm *ctx = panel_to_lcm(panel);
 
 	gpiod_set_value(ctx->reset_gpio, on);
 
@@ -412,8 +385,8 @@ static int lcm_get_modes(struct drm_panel *panel, struct drm_connector *connecto
 	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 	drm_mode_probed_add(connector, mode);
 
-	connector->display_info.width_mm = 62;
-	connector->display_info.height_mm = 62;
+	connector->display_info.width_mm = PHYSICAL_WIDTH / 1000;
+	connector->display_info.height_mm = PHYSICAL_HEIGHT / 1000;
 
 	return 1;
 }
@@ -426,30 +399,10 @@ static const struct drm_panel_funcs lcm_drm_funcs = {
 	.get_modes = lcm_get_modes,
 };
 
-
-/*add by hodafone begin*/
-static int lcm_debug_read(struct seq_file *m, void *v)                     
-{
-	seq_printf(m, "%s\n", LCM_NAME);
-	return 0;
-}
-
-static int proc_hodafone_lcm_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, lcm_debug_read, NULL);
-};
-
-static struct proc_ops hodafone_lcm_fops = {
-	.proc_open  = proc_hodafone_lcm_open,
-	.proc_read  = seq_read,
-};
-
-/*add by hodafone end*/
-
 static int lcm_probe(struct mipi_dsi_device *dsi)
 {
 	struct device *dev = &dsi->dev;
-	struct hodafone_lcm *ctx;
+	struct lcm *ctx;
 	struct device_node *backlight;
 	int ret;
 	struct device_node *dsi_node, *remote_node = NULL, *endpoint = NULL;
@@ -471,13 +424,12 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 		return -ENODEV;
 	}
 
-	ctx = devm_kzalloc(dev, sizeof(struct hodafone_lcm), GFP_KERNEL);
+	ctx = devm_kzalloc(dev, sizeof(struct lcm), GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
 
 	mipi_dsi_set_drvdata(dsi, ctx);
 
-	mlocalctx = ctx;
 	ctx->dev = dev;
 	dsi->lanes = 2;
 	dsi->format = MIPI_DSI_FMT_RGB888;
@@ -520,8 +472,6 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	ctx->enabled = true;
 
 	drm_panel_init(&ctx->panel, dev, &lcm_drm_funcs, DRM_MODE_CONNECTOR_DSI);
-	ctx->panel.dev = dev;
-	ctx->panel.funcs = &lcm_drm_funcs;
 
 	drm_panel_add(&ctx->panel);
 
@@ -536,10 +486,6 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	if (ret < 0)
 		return ret;
 #endif
-
-	/*add by hodafone begin*/
-	lcm_proc_entry = proc_create(PROC_NAME, 0777, NULL,&hodafone_lcm_fops);
-	/*add by hodafone end*/
 	
 	pr_info("%s-\n", __func__);
 
@@ -548,7 +494,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 
 static int lcm_remove(struct mipi_dsi_device *dsi)
 {
-	struct hodafone_lcm *ctx = mipi_dsi_get_drvdata(dsi);
+	struct lcm *ctx = mipi_dsi_get_drvdata(dsi);
 #if defined(CONFIG_MTK_PANEL_EXT)
 	struct mtk_panel_ctx *ext_ctx = find_panel_ctx(&ctx->panel);
 #endif
@@ -559,16 +505,12 @@ static int lcm_remove(struct mipi_dsi_device *dsi)
 	mtk_panel_detach(ext_ctx);
 	mtk_panel_remove(ext_ctx);
 #endif
-	/*add by hodafone begin*/
-	if (lcm_proc_entry)
-		remove_proc_entry(PROC_NAME, NULL);
-	/*add by hodafone end*/
 	
 	return 0;
 }
 
 static const struct of_device_id lcm_of_match[] = {
-	{ .compatible = "mediatek,q20_panel_general,vdo", },
+	{ .compatible = "innolux,pd035sc-01a", },
 	{ }
 };
 

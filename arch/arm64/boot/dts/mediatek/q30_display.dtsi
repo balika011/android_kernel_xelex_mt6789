@@ -1,5 +1,9 @@
 #include "qx0_display.dtsi"
 
+&display_ldo {
+	regulator-boot-on;
+};
+
 &mtk_leds {
 	compatible = "mediatek,pwm-leds";
 
@@ -17,8 +21,7 @@
 
 &dsi0 {
 	panel1@0 {
-		compatible = "mediatek,q30_panel_general,vdo";
-		board_name = "q30_v1";
+		compatible = "jdi,panorama";
 	};
 };
 
