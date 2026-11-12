@@ -255,7 +255,7 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 {
 	int retval;
 	unsigned char retry;
-	unsigned char buf[length + 1];
+	unsigned char *buf = kzalloc(length + 1, GFP_KERNEL);
 	struct i2c_client *i2c = to_i2c_client(rmi4_data->pdev->dev.parent);
 	struct i2c_msg msg[] = {
 		{
@@ -265,6 +265,9 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 			.buf = buf,
 		}
 	};
+
+	if (!buf)
+		return -ENOMEM;
 
 	mutex_lock(&rmi4_data->rmi4_io_ctrl_mutex);
 
@@ -303,6 +306,8 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 
 exit:
 	mutex_unlock(&rmi4_data->rmi4_io_ctrl_mutex);
+
+	kfree(buf);
 
 	return retval;
 }

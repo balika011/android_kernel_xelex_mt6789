@@ -10,7 +10,7 @@ config TOUCHSCREEN_SYNAPTICS_DSX
 	  If unsure, say N.
 
 config TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE
-	tristate "Synaptics DSX touchscreen firmware update module"
+	bool "Synaptics DSX touchscreen firmware update module"
 	depends on TOUCHSCREEN_SYNAPTICS_DSX
 	help
 	  Say Y here to enable support for carrying out firmware update.
