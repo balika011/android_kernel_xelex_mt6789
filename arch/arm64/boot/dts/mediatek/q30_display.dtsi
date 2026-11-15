@@ -1,8 +1,31 @@
 #include "qx0_display.dtsi"
 
-&display_ldo {
-	regulator-boot-on;
+&odm {
+	touch_ldo: fixed-regulator-1 {
+		compatible = "regulator-fixed";
+		regulator-name = "touch_ldo";
+		gpio = <&pio 27 0>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	display_1v8_ldo: fixed-regulator-3 {
+		compatible = "regulator-fixed";
+		regulator-name = "display_1v8_ldo";
+		gpio = <&pio 157 0>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	display_2v8_ldo: fixed-regulator-4 {
+		compatible = "regulator-fixed";
+		regulator-name = "display_2v8_ldo";
+		gpio = <&pio 158 0>;
+		enable-active-high;
+		regulator-boot-on;
+	};
 };
+
 
 &mtk_leds {
 	compatible = "mediatek,pwm-leds";
@@ -22,6 +45,9 @@
 &dsi0 {
 	panel1@0 {
 		compatible = "jdi,panorama";
+		v18-supply = <&display_1v8_ldo>;
+		v28-supply = <&display_2v8_ldo>;
+		touch-supply = <&touch_ldo>;
 	};
 };
 

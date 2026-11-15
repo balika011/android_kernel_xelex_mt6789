@@ -37,6 +37,9 @@ struct lcm {
 	struct device *dev;
 	struct drm_panel panel;
 	struct backlight_device *backlight;
+	struct regulator *v18_reg;
+	struct regulator *v28_reg;
+	struct regulator *touch_reg;
 	struct gpio_desc *reset_gpio;
 
 	bool prepared;
@@ -84,53 +87,24 @@ static void lcm_dcs_write(struct lcm *ctx, const void *data, size_t len)
 	}
 }
 
-static int lcm_dcs_read(struct lcm *ctx, u8 cmd, void *data, size_t len)
-{
-	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
-	ssize_t ret;
-
-	if (ctx->error < 0)
-		return 0;
-
-	ret = mipi_dsi_dcs_read(dsi, cmd, data, len);
-	if (ret < 0) {
-		dev_err(ctx->dev, "error %d reading dcs seq:(%#x)\n", ret, cmd);
-		ctx->error = ret;
-	}
-
-	return ret;
-}
-
-static void lcm_panel_get_data(struct lcm *ctx)
-{
-	u8 panel_id[6] = { 0 };
-	const char *stage;
-	int ret;
-
-	ret = lcm_dcs_read(ctx, 0xA1, panel_id, sizeof(panel_id));
-	if (ret < 0)
-		return;
-
-	dev_info(ctx->dev, "panel manufacturing date: %4d/%02d/%02d\n", 2010 + (panel_id[0] >> 4), panel_id[0] & 0xF, panel_id[1] >> 3);
-	dev_info(ctx->dev, "panel vendor id: %d\n", panel_id[1] & 7); // 1 = JDI
-	dev_info(ctx->dev, "panel MDL: %d\n", panel_id[2] >> 6);
-	dev_info(ctx->dev, "panel inspection equipment: %d\n", panel_id[4] >> 4);
-	dev_info(ctx->dev, "panel glass manufacturing site: %d\n", panel_id[4] & 0xF);
-	dev_info(ctx->dev, "panel manufacturer rev : %d\n", panel_id[5] >> 4);
-	switch ((panel_id[5] >> 2) & 0x3)
-	{
-		case 0: stage = "TS"; break;
-		case 1: stage = "ES"; break;
-		case 2: stage = "CS"; break;
-		case 3: stage = "MP"; break;
-	}
-	dev_info(ctx->dev, "panel rim status: %s%d\n", stage, (panel_id[5] & 0x3) + 1);
-	dev_info(ctx->dev, "panel serial: %d\n", panel_id[3] | ((panel_id[2] & 0x3F) << 8));
-}
-
 static void lcm_panel_init(struct lcm *ctx)
 {
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
+
+	if (ctx->touch_reg) {
+		regulator_enable(ctx->touch_reg);
+		mdelay(60);
+	}
+
+	if (ctx->v18_reg) {
+		regulator_enable(ctx->v18_reg);
+		mdelay(60);
+	}
+
+	if (ctx->v28_reg) {
+		regulator_enable(ctx->v28_reg);
+		mdelay(60);
+	}
 
 	gpiod_set_value(ctx->reset_gpio, 1);
 	mdelay(60);
@@ -138,8 +112,6 @@ static void lcm_panel_init(struct lcm *ctx)
 	mdelay(200);
 	gpiod_set_value(ctx->reset_gpio, 1);
 	mdelay(60);
-
-	lcm_panel_get_data(ctx);
 
 	lcm_dcs_write_seq_static(ctx, MIPI_DCS_WRITE_CONTROL_DISPLAY, 0x2c); // set control display
 	mdelay(10);
@@ -169,7 +141,7 @@ static int lcm_disable(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_err("%s\n", __func__);
+	dev_info(ctx->dev, "%s\n", __func__);
 	if (!ctx->enabled)
 		return 0;
 
@@ -191,7 +163,7 @@ static int lcm_unprepare(struct drm_panel *panel)
 	if (!ctx->prepared)
 		return 0;
 
-	pr_err("%s\n", __func__);
+	dev_info(ctx->dev, "%s\n", __func__);
 	mipi_dsi_dcs_set_tear_off(dsi);
 	mdelay(10);
 	mipi_dsi_dcs_set_display_off(dsi);
@@ -200,7 +172,16 @@ static int lcm_unprepare(struct drm_panel *panel)
 	mdelay(150);
 
 	gpiod_set_value(ctx->reset_gpio, 0);
-	
+
+	if (ctx->v18_reg)
+		regulator_disable(ctx->v18_reg);
+
+	if (ctx->v28_reg)
+		regulator_disable(ctx->v28_reg);
+
+	if (ctx->touch_reg)
+		regulator_disable(ctx->touch_reg);
+
 	ctx->error = 0;
 	ctx->prepared = false;
 	
@@ -212,7 +193,7 @@ static int lcm_prepare(struct drm_panel *panel)
 	struct lcm *ctx = panel_to_lcm(panel);
 	int ret;
 
-	pr_err("%s\n", __func__);
+	dev_info(ctx->dev, "%s\n", __func__);
 	if (ctx->prepared)
 		return 0;
 
@@ -235,7 +216,7 @@ static int lcm_enable(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_err("%s\n", __func__);
+	dev_info(ctx->dev, "%s\n", __func__);
 	if (ctx->enabled)
 		return 0;
 
@@ -265,9 +246,7 @@ static const struct drm_display_mode default_mode = {
 	.vtotal = FRAME_HEIGHT + VFP + VSA + VBP,
 };
 
-
 #if defined(CONFIG_MTK_PANEL_EXT)
-
 static struct mtk_panel_params ext_params = {
 	.pll_clk = PLL_CLK,
 	.data_rate = PLL_CLK*2,
@@ -291,18 +270,8 @@ static struct mtk_panel_params ext_params = {
 	},
 };
 
-static int panel_ext_reset(struct drm_panel *panel, int on)
-{
-	struct lcm *ctx = panel_to_lcm(panel);
-
-	gpiod_set_value(ctx->reset_gpio, on);
-
-	return 0;
-}
-
 static int panel_ata_check(struct drm_panel *panel)
 {
-	/* Customer test by own ATA tool */
 	return 1;
 }
 
@@ -318,13 +287,11 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 		return -1;
 
 	cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
-	
 
 	return 0;
 }
 
 static struct mtk_panel_funcs ext_funcs = {
-	.reset = panel_ext_reset,
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
 	.ata_check = panel_ata_check,
 };
@@ -368,20 +335,22 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	int ret;
 	struct device_node *dsi_node, *remote_node = NULL, *endpoint = NULL;
 
+	dev_info(dev, "%s+\n", __func__);
+
 	dsi_node = of_get_parent(dev->of_node);
 	if (dsi_node) {
 		endpoint = of_graph_get_next_endpoint(dsi_node, NULL);
 		if (endpoint) {
 			remote_node = of_graph_get_remote_port_parent(endpoint);
 			if (!remote_node) {
-				pr_info("No panel connected,skip probe lcm\n");
+				dev_info(dev, "No panel connected,skip probe lcm\n");
 				return -ENODEV;
 			}
-			pr_info("device node name:%s\n", remote_node->name);
+			dev_info(dev, "device node name:%s\n", remote_node->name);
 		}
 	}
 	if (remote_node != dev->of_node) {
-		pr_info("%s+ skip probe due to not current lcm\n", __func__);
+		dev_info(dev, "%s+ skip probe due to not current lcm\n", __func__);
 		return -ENODEV;
 	}
 
@@ -407,14 +376,43 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 			return -EPROBE_DEFER;
 	}
 
-	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
+	ctx->touch_reg = devm_regulator_get(dev, "touch");
+	if (IS_ERR(ctx->touch_reg)) {
+		dev_err(dev, "Failed to get touch regulator: %d\n",
+			PTR_ERR(ctx->touch_reg));
+		ctx->touch_reg = NULL;
+	}
 
+	if (ctx->touch_reg)
+		regulator_enable(ctx->touch_reg);
+
+	ctx->v18_reg = devm_regulator_get(dev, "v18");
+	if (IS_ERR(ctx->v18_reg)) {
+		dev_err(dev, "Failed to get 1.8v regulator: %d\n",
+			PTR_ERR(ctx->v18_reg));
+		ctx->v18_reg = NULL;
+	}
+
+	if (ctx->v18_reg)
+		regulator_enable(ctx->v18_reg);
+
+	ctx->v28_reg = devm_regulator_get(dev, "v28");
+	if (IS_ERR(ctx->v28_reg)) {
+		dev_err(dev, "Failed to get 2.8v regulator: %d\n",
+			PTR_ERR(ctx->v28_reg));
+		ctx->v28_reg = NULL;
+	}
+
+	if (ctx->v28_reg)
+		regulator_enable(ctx->v28_reg);
+
+	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(ctx->reset_gpio)) {
 		dev_err(dev, "cannot get reset-gpios %ld\n",
 			PTR_ERR(ctx->reset_gpio));
 		return PTR_ERR(ctx->reset_gpio);
 	}
-	
+
 	ctx->prepared = true;
 	ctx->enabled = true;
 
@@ -423,9 +421,10 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	drm_panel_add(&ctx->panel);
 
 	ret = mipi_dsi_attach(dsi);
-
-	if (ret < 0)
+	if (ret < 0) {
 		drm_panel_remove(&ctx->panel);
+		return ret;
+	}
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 	mtk_panel_tch_handle_reg(&ctx->panel);
@@ -434,7 +433,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 		return ret;
 #endif
 	
-	pr_info("%s-\n", __func__);
+	dev_info(dev, "%s-\n", __func__);
 
 	return ret;
 }

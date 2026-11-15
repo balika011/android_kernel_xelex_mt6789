@@ -1,12 +1,3 @@
-&odm {
-	display_ldo: fixed-regulator-1 {
-		compatible = "regulator-fixed";
-		regulator-name = "display_ldo";
-		gpio = <&pio 27 0>;
-		enable-active-high;
-	};
-};
-
 &mtkfb {
 	pinctrl-names = "lcm_led_en1_gpio", "lcm_led_en0_gpio",
 		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
@@ -20,11 +11,7 @@
 };
 
 &dispsys_config {
-	pinctrl-names =
-		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
-		"mode_te_te";
-	pinctrl-0 = <&mtkfb_pins_lcm_rst_out1_gpio>;
-	pinctrl-1 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-names = "mode_te_te";
 	pinctrl-2 = <&mtkfb_pins_lcm_dsi_te>;
 	status = "okay";
 };
@@ -76,6 +63,7 @@
 	panel1@0 {
 		reg = <0>;
 		reset-gpios = <&pio 85 0>;
+
 		port {
 			panel_in1: endpoint {
 				remote-endpoint = <&dsi_out>;
@@ -96,8 +84,6 @@
 	synaptics_dsx_i2c_display@67 {
 		compatible = "synaptics,dsx";
 		reg = <0x67>;
-		vdd-supply = <&display_ldo>;
-		synaptics,pwr-reg-name = "vdd";
 		synaptics,input-device-name = "touch_display";
 		synaptics,irq-gpio = <&pio 9 0>;
 		synaptics,irq-flags = <0x2008>;
