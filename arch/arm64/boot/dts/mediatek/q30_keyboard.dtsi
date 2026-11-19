@@ -1,3 +1,5 @@
+#include <dt-bindings/input/input.h>
+
 &odm {
 	leds {
 		keyboard {
@@ -69,34 +71,36 @@
 		keypad,num-columns = <5>;
 		keypad,debounce-ms = <5>;
 		linux,keypad-no-autorepeat;
-		linux,keymap = <0x02000010 /* row: 2 column: 0 keycode: KEY_Q */
-				0x02010011 /* row: 2 column: 1 keycode: KEY_W */
-				0x02020012 /* row: 2 column: 2 keycode: KEY_E */
-				0x02030013 /* row: 2 column: 3 keycode: KEY_R */
-				0x02040014 /* row: 2 column: 4 keycode: KEY_T */
-				0x03000015 /* row: 3 column: 0 keycode: KEY_Y */
-				0x03010016 /* row: 3 column: 1 keycode: KEY_U */
-				0x03020017 /* row: 3 column: 2 keycode: KEY_I */
-				0x03030018 /* row: 3 column: 3 keycode: KEY_O */
-				0x03040019 /* row: 3 column: 4 keycode: KEY_P */
-				0x0100001e /* row: 1 column: 0 keycode: KEY_A */
-				0x0101001f /* row: 1 column: 1 keycode: KEY_S */
-				0x01020020 /* row: 1 column: 2 keycode: KEY_D */
-				0x01030021 /* row: 1 column: 3 keycode: KEY_F */
-				0x01040022 /* row: 1 column: 4 keycode: KEY_G */
-				0x04000023 /* row: 4 column: 0 keycode: KEY_H */
-				0x04010024 /* row: 4 column: 1 keycode: KEY_J */
-				0x04020025 /* row: 4 column: 2 keycode: KEY_K */
-				0x04030026 /* row: 4 column: 3 keycode: KEY_L */
-				0x0404000e /* row: 4 column: 4 keycode: KEY_BACKSPACE */
-				0x0000002c /* row: 0 column: 0 keycode: KEY_Z */
-				0x0001002d /* row: 0 column: 1 keycode: KEY_X */
-				0x0002002e /* row: 0 column: 2 keycode: KEY_C */
-				0x0003002f /* row: 0 column: 3 keycode: KEY_V */
-				0x00040039 /* row: 0 column: 4 keycode: KEY_SPACE */
-				0x05010030 /* row: 5 column: 1 keycode: KEY_B */
-				0x05020031 /* row: 5 column: 2 keycode: KEY_N */
-				0x05030032 /* row: 5 column: 3 keycode: KEY_M */
-				0x0504001c>; /* row: 5 column: 4 keycode: KEY_ENTER */
+		linux,keymap = <
+				MATRIX_KEY(2, 0, KEY_Q)
+				MATRIX_KEY(2, 1, KEY_W)
+				MATRIX_KEY(2, 2, KEY_E)
+				MATRIX_KEY(2, 3, KEY_R)
+				MATRIX_KEY(2, 4, KEY_T)
+				MATRIX_KEY(3, 0, KEY_Y)
+				MATRIX_KEY(3, 1, KEY_U)
+				MATRIX_KEY(3, 2, KEY_I)
+				MATRIX_KEY(3, 3, KEY_O)
+				MATRIX_KEY(3, 4, KEY_P)
+				MATRIX_KEY(1, 0, KEY_A)
+				MATRIX_KEY(1, 1, KEY_S)
+				MATRIX_KEY(1, 2, KEY_D)
+				MATRIX_KEY(1, 3, KEY_F)
+				MATRIX_KEY(1, 4, KEY_G)
+				MATRIX_KEY(4, 0, KEY_H)
+				MATRIX_KEY(4, 1, KEY_J)
+				MATRIX_KEY(4, 2, KEY_K)
+				MATRIX_KEY(4, 3, KEY_L)
+				MATRIX_KEY(4, 4, KEY_BACKSPACE)
+				MATRIX_KEY(0, 0, KEY_Z)
+				MATRIX_KEY(0, 1, KEY_X)
+				MATRIX_KEY(0, 2, KEY_C)
+				MATRIX_KEY(0, 3, KEY_V)
+				MATRIX_KEY(0, 4, KEY_SPACE)
+				MATRIX_KEY(5, 1, KEY_B)
+				MATRIX_KEY(5, 2, KEY_N)
+				MATRIX_KEY(5, 3, KEY_M)
+				MATRIX_KEY(5, 4, KEY_ENTER)
+			>;
 	};
 };
