@@ -583,7 +583,9 @@ int musb_init_debugfs(struct musb *musb)
 {
 	int ret, idx = 0;
 
+#if !IS_ENABLED(CONFIG_MTK_MUSB_DUAL_ROLE)
 	proc_mkdir(PROC_DIR_MTK_USB, NULL);
+#endif
 
 	proc_files[idx] = proc_create_data(PROC_FILE_REGDUMP, 0444,
 			NULL, &musb_regdump_fops, musb);
