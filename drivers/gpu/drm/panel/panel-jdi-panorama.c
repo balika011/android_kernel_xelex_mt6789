@@ -141,7 +141,6 @@ static int lcm_disable(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	dev_info(ctx->dev, "%s\n", __func__);
 	if (!ctx->enabled)
 		return 0;
 
@@ -159,16 +158,30 @@ static int lcm_unprepare(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
+	int ret;
 
 	if (!ctx->prepared)
 		return 0;
 
-	dev_info(ctx->dev, "%s\n", __func__);
-	mipi_dsi_dcs_set_tear_off(dsi);
+	ret = mipi_dsi_dcs_set_tear_off(dsi);
+	if (ret) {
+		dev_err(ctx->dev, "failed to turn tear off (%d)\n", ret);
+		return ret;
+	}
 	mdelay(10);
-	mipi_dsi_dcs_set_display_off(dsi);
+
+	ret = mipi_dsi_dcs_set_display_off(dsi);
+	if (ret) {
+		dev_err(ctx->dev, "failed to turn display off (%d)\n", ret);
+		return ret;
+	}
 	mdelay(10);
-	mipi_dsi_dcs_enter_sleep_mode(dsi);
+
+	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
+	if (ret) {
+		dev_err(ctx->dev, "failed to enter sleep mode (%d)\n", ret);
+		return ret;
+	}
 	mdelay(150);
 
 	gpiod_set_value(ctx->reset_gpio, 0);
@@ -193,7 +206,6 @@ static int lcm_prepare(struct drm_panel *panel)
 	struct lcm *ctx = panel_to_lcm(panel);
 	int ret;
 
-	dev_info(ctx->dev, "%s\n", __func__);
 	if (ctx->prepared)
 		return 0;
 
@@ -216,7 +228,6 @@ static int lcm_enable(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	dev_info(ctx->dev, "%s\n", __func__);
 	if (ctx->enabled)
 		return 0;
 
@@ -335,8 +346,6 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	int ret;
 	struct device_node *dsi_node, *remote_node = NULL, *endpoint = NULL;
 
-	dev_info(dev, "%s+\n", __func__);
-
 	dsi_node = of_get_parent(dev->of_node);
 	if (dsi_node) {
 		endpoint = of_graph_get_next_endpoint(dsi_node, NULL);
@@ -432,8 +441,6 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	if (ret < 0)
 		return ret;
 #endif
-	
-	dev_info(dev, "%s-\n", __func__);
 
 	return ret;
 }
@@ -462,7 +469,7 @@ static const struct of_device_id lcm_of_match[] = {
 
 MODULE_DEVICE_TABLE(of, lcm_of_match);
 
-static struct mipi_dsi_driver q30_lcm_driver = {
+static struct mipi_dsi_driver lcm_driver = {
 	.probe = lcm_probe,
 	.remove = lcm_remove,
 	.driver = {
@@ -472,8 +479,8 @@ static struct mipi_dsi_driver q30_lcm_driver = {
 	},
 };
 
-module_mipi_dsi_driver(q30_lcm_driver);
+module_mipi_dsi_driver(lcm_driver);
 
-MODULE_AUTHOR("Tai-Hua Tseng <tai-hua.tseng@mediatek.com>");
-MODULE_DESCRIPTION("hodafonehw_panel_general vdo Panel Driver");
+MODULE_AUTHOR("");
+MODULE_DESCRIPTION("JDI Panorama Panel Driver");
 MODULE_LICENSE("GPL v2");

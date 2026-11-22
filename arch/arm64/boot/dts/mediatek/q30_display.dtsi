@@ -9,7 +9,7 @@
 		regulator-boot-on;
 	};
 
-	display_1v8_ldo: fixed-regulator-3 {
+	display_1v8_ldo: fixed-regulator-2 {
 		compatible = "regulator-fixed";
 		regulator-name = "display_1v8_ldo";
 		gpio = <&pio 157 0>;
@@ -17,7 +17,7 @@
 		regulator-boot-on;
 	};
 
-	display_2v8_ldo: fixed-regulator-4 {
+	display_2v8_ldo: fixed-regulator-3 {
 		compatible = "regulator-fixed";
 		regulator-name = "display_2v8_ldo";
 		gpio = <&pio 158 0>;
@@ -25,7 +25,6 @@
 		regulator-boot-on;
 	};
 };
-
 
 &mtk_leds {
 	compatible = "mediatek,pwm-leds";
@@ -45,9 +44,9 @@
 &dsi0 {
 	panel1@0 {
 		compatible = "jdi,panorama";
+		touch-supply = <&touch_ldo>;
 		v18-supply = <&display_1v8_ldo>;
 		v28-supply = <&display_2v8_ldo>;
-		touch-supply = <&touch_ldo>;
 	};
 };
 

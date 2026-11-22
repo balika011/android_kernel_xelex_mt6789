@@ -1,5 +1,23 @@
 #include "qx0_display.dtsi"
 
+&odm {
+	touch_ldo: fixed-regulator-1 {
+		compatible = "regulator-fixed";
+		regulator-name = "touch_ldo";
+		gpio = <&pio 27 0>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	display_avdd_ldo: fixed-regulator-2 {
+		compatible = "regulator-fixed";
+		regulator-name = "display_1v8_ldo";
+		gpio = <&pio 156 0>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+};
+
 &mtk_leds {
 	compatible = "mediatek,i2c-leds";
 
@@ -14,8 +32,8 @@
 &dsi0 {
 	panel1@0 {
 		compatible = "innolux,pd035sc-01a";
-		avdd-gpios  = <&pio 156 0>;
-		board_name = "q20_v12";
+		touch-supply = <&touch_ldo>;
+		avdd-supply = <&display_avdd_ldo>;
 	};
 };
 
