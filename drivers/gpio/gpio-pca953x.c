@@ -429,7 +429,9 @@ static int pca953x_write_regs(struct pca953x_chip *chip, int reg, unsigned long 
 	for (i = 0; i < NBANK(chip); i++)
 		value[i] = bitmap_get_value8(val, i * BANK_SZ);
 
+	mutex_lock(&chip->i2c_lock);
 	ret = regmap_bulk_write(chip->regmap, regaddr, value, NBANK(chip));
+	mutex_unlock(&chip->i2c_lock);
 	if (ret < 0) {
 		dev_err(&chip->client->dev, "failed writing register\n");
 		return ret;
@@ -444,7 +446,9 @@ static int pca953x_read_regs(struct pca953x_chip *chip, int reg, unsigned long *
 	u8 value[MAX_BANK];
 	int i, ret;
 
+	mutex_lock(&chip->i2c_lock);
 	ret = regmap_bulk_read(chip->regmap, regaddr, value, NBANK(chip));
+	mutex_unlock(&chip->i2c_lock);
 	if (ret < 0) {
 		dev_err(&chip->client->dev, "failed reading register\n");
 		return ret;
@@ -551,9 +555,7 @@ static int pca953x_gpio_get_multiple(struct gpio_chip *gc,
 	DECLARE_BITMAP(reg_val, MAX_LINE);
 	int ret;
 
-	mutex_lock(&chip->i2c_lock);
 	ret = pca953x_read_regs(chip, chip->regs->input, reg_val);
-	mutex_unlock(&chip->i2c_lock);
 	if (ret)
 		return ret;
 
@@ -568,16 +570,13 @@ static void pca953x_gpio_set_multiple(struct gpio_chip *gc,
 	DECLARE_BITMAP(reg_val, MAX_LINE);
 	int ret;
 
-	mutex_lock(&chip->i2c_lock);
 	ret = pca953x_read_regs(chip, chip->regs->output, reg_val);
 	if (ret)
-		goto exit;
+		return;
 
 	bitmap_replace(reg_val, reg_val, bits, mask, gc->ngpio);
 
 	pca953x_write_regs(chip, chip->regs->output, reg_val);
-exit:
-	mutex_unlock(&chip->i2c_lock);
 }
 
 static int pca953x_gpio_set_pull_up_down(struct pca953x_chip *chip,
@@ -634,9 +633,6 @@ static int pca953x_gpio_set_output_mode(struct pca953x_chip *chip,
 	u8 out_conf_reg = pca953x_recalc_addr(chip, AW95016A_OUT_CONF, offset);
 	u8 bit = BIT(offset % BANK_SZ);
 	int ret;
-
-	dev_info(&chip->client->dev, "pca953x_gpio_set_output_mode %x %x\n",
-		 offset, config);
 
 	/*
 	 * pull-up/pull-down configuration requires PCAL extended
@@ -702,32 +698,6 @@ static void pca953x_setup_gpio(struct pca953x_chip *chip, int gpios)
 }
 
 #ifdef CONFIG_GPIO_PCA953X_IRQ
-static void pca953x_update_irq_mask(struct pca953x_chip *chip)
-{
-	DECLARE_BITMAP(irq_mask, MAX_LINE);
-	DECLARE_BITMAP(cur_stat, MAX_LINE);
-
-	int in_latch_reg = (chip->driver_data & PCA_AW) ? AW95016A_IN_LATCH :
-							  PCAL953x_IN_LATCH;
-
-	int int_mask_reg = (chip->driver_data & PCA_AW) ? AW95016A_INT_MASK :
-							  PCAL953x_INT_MASK;
-
-	if (!(chip->driver_data & (PCA_PCAL | PCA_AW)))
-		return;
-
-	/* Enable latch on interrupt-enabled inputs */
-	pca953x_write_regs(chip, in_latch_reg, chip->irq_mask);
-
-	bitmap_complement(irq_mask, chip->irq_mask, chip->gpio_chip.ngpio);
-
-	/* Unmask enabled interrupts */
-	pca953x_write_regs(chip, int_mask_reg, irq_mask);
-
-	/* Clear interrupt status */
-	pca953x_read_regs(chip, chip->regs->input, cur_stat);
-}
-
 static void pca953x_irq_mask(struct irq_data *d)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
@@ -735,8 +705,6 @@ static void pca953x_irq_mask(struct irq_data *d)
 	irq_hw_number_t hwirq = irqd_to_hwirq(d);
 
 	clear_bit(hwirq, chip->irq_mask);
-
-	pca953x_update_irq_mask(chip);
 }
 
 static void pca953x_irq_unmask(struct irq_data *d)
@@ -746,8 +714,6 @@ static void pca953x_irq_unmask(struct irq_data *d)
 	irq_hw_number_t hwirq = irqd_to_hwirq(d);
 
 	set_bit(hwirq, chip->irq_mask);
-
-	pca953x_update_irq_mask(chip);
 }
 
 static int pca953x_irq_set_wake(struct irq_data *d, unsigned int on)
@@ -778,6 +744,13 @@ static void pca953x_irq_bus_sync_unlock(struct irq_data *d)
 	DECLARE_BITMAP(irq_mask, MAX_LINE);
 	DECLARE_BITMAP(reg_direction, MAX_LINE);
 	int level;
+
+	if (chip->driver_data & (PCA_PCAL | PCA_AW)) {
+		bitmap_complement(irq_mask, chip->irq_mask, gc->ngpio);
+
+		/* Unmask enabled interrupts */
+		pca953x_write_regs(chip, (chip->driver_data & PCA_AW) ? AW95016A_INT_MASK : PCAL953x_INT_MASK, irq_mask);
+	}
 
 	/* Switch direction to input if needed */
 	pca953x_read_regs(chip, chip->regs->direction, reg_direction);
@@ -832,45 +805,6 @@ static bool pca953x_irq_pending(struct pca953x_chip *chip, unsigned long *pendin
 	DECLARE_BITMAP(trigger, MAX_LINE);
 	int ret;
 
-	if (chip->driver_data & PCA_PCAL) {
-		/* Read the current interrupt status from the device */
-		ret = pca953x_read_regs(chip, PCAL953x_INT_STAT, trigger);
-		if (ret)
-			return false;
-
-		/* Check latched inputs and clear interrupt status */
-		ret = pca953x_read_regs(chip, chip->regs->input, cur_stat);
-		if (ret)
-			return false;
-
-		/* Apply filter for rising/falling edge selection */
-		bitmap_replace(new_stat, chip->irq_trig_fall, chip->irq_trig_raise, cur_stat, gc->ngpio);
-
-		bitmap_and(pending, new_stat, trigger, gc->ngpio);
-
-		return !bitmap_empty(pending, gc->ngpio);
-	}
-
-	if (chip->driver_data & PCA_AW) {
-		/* Read the current interrupt status from the device */
-		ret = pca953x_read_regs(chip, AW95016A_INT_STAT, trigger);
-		if (ret)
-			return false;
-
-		/* Check latched inputs and clear interrupt status */
-		ret = pca953x_read_regs(chip, chip->regs->input, cur_stat);
-		if (ret)
-			return false;
-
-		/* Apply filter for rising/falling edge selection */
-		bitmap_replace(new_stat, chip->irq_trig_fall,
-			       chip->irq_trig_raise, cur_stat, gc->ngpio);
-
-		bitmap_and(pending, new_stat, trigger, gc->ngpio);
-
-		return !bitmap_empty(pending, gc->ngpio);
-	}
-
 	ret = pca953x_read_regs(chip, chip->regs->input, cur_stat);
 	if (ret)
 		return false;
@@ -905,27 +839,16 @@ static irqreturn_t pca953x_irq_handler(int irq, void *devid)
 	struct pca953x_chip *chip = devid;
 	struct gpio_chip *gc = &chip->gpio_chip;
 	DECLARE_BITMAP(pending, MAX_LINE);
-	DECLARE_BITMAP(irq_mask, MAX_LINE);
+	// DECLARE_BITMAP(temp, MAX_LINE);
 	int level;
 	bool ret;
 
 	bitmap_zero(pending, MAX_LINE);
 
-	mutex_lock(&chip->i2c_lock);
 	ret = pca953x_irq_pending(chip, pending);
-	mutex_unlock(&chip->i2c_lock);
 
 	if (ret) {
 		ret = 0;
-
-		/*
-		 * Workaround:
-		 * Disable all IRQs during IRQ handling due to
-		 * IRQF_ONESHOT being ignored by handle_nested_irq.
-		 */
-		bitmap_copy(irq_mask, chip->irq_mask, MAX_LINE);
-		bitmap_zero(chip->irq_mask, MAX_LINE);
-		pca953x_update_irq_mask(chip);
 
 		for_each_set_bit(level, pending, gc->ngpio) {
 			int nested_irq = irq_find_mapping(gc->irq.domain, level);
@@ -939,8 +862,6 @@ static irqreturn_t pca953x_irq_handler(int irq, void *devid)
 			ret = 1;
 		}
 
-		bitmap_copy(chip->irq_mask, irq_mask, MAX_LINE);
-		pca953x_update_irq_mask(chip);
 	}
 
 	return IRQ_RETVAL(ret);
@@ -1096,7 +1017,6 @@ static int pca953x_probe(struct i2c_client *client,
 	u32 invert = 0;
 	struct regulator *reg;
 	const struct regmap_config *regmap_config;
-	struct gpio_desc *reset_gpio;
 
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (chip == NULL)
@@ -1108,8 +1028,24 @@ static int pca953x_probe(struct i2c_client *client,
 		chip->gpio_start = pdata->gpio_base;
 		invert = pdata->invert;
 		chip->names = pdata->names;
-	} else
+	} else {
+		struct gpio_desc *reset_gpio;
+
 		chip->gpio_start = -1;
+		irq_base = 0;
+
+		/*
+		 * See if we need to de-assert a reset pin.
+		 *
+		 * There is no known ACPI-enabled platforms that are
+		 * using "reset" GPIO. Otherwise any of those platform
+		 * must use _DSD method with corresponding property.
+		 */
+		reset_gpio = devm_gpiod_get_optional(&client->dev, "reset",
+						     GPIOD_OUT_LOW);
+		if (IS_ERR(reset_gpio))
+			return PTR_ERR(reset_gpio);
+	}
 
 	chip->client = client;
 
@@ -1139,23 +1075,6 @@ static int pca953x_probe(struct i2c_client *client,
 	}
 
 	i2c_set_clientdata(client, chip);
-
-	/*
-		 * See if we need to de-assert a reset pin.
-		 *
-		 * There is no known ACPI-enabled platforms that are
-		 * using "reset" GPIO. Otherwise any of those platform
-		 * must use _DSD method with corresponding property.
-		 */
-	reset_gpio =
-		devm_gpiod_get_optional(&client->dev, "reset", GPIOD_OUT_LOW);
-	if (reset_gpio && !IS_ERR(reset_gpio)) {
-		usleep_range(1000, 2000);
-		gpiod_set_value_cansleep(reset_gpio, 0);
-		usleep_range(1000, 2000);
-		gpiod_set_value_cansleep(reset_gpio, 1);
-		usleep_range(6000, 6500);
-	}
 
 	pca953x_setup_gpio(chip, chip->driver_data & PCA_GPIO_MASK);
 
@@ -1277,37 +1196,8 @@ static int pca953x_regcache_sync(struct device *dev)
 	}
 
 #ifdef CONFIG_GPIO_PCA953X_IRQ
-	if (chip->driver_data & PCA_PCAL) {
-		regaddr = pca953x_recalc_addr(chip, PCAL953x_IN_LATCH, 0);
-		ret = regcache_sync_region(chip->regmap, regaddr,
-					   regaddr + NBANK(chip) - 1);
-		if (ret) {
-			dev_err(dev, "Failed to sync INT latch registers: %d\n",
-				ret);
-			return ret;
-		}
-
-		regaddr = pca953x_recalc_addr(chip, PCAL953x_INT_MASK, 0);
-		ret = regcache_sync_region(chip->regmap, regaddr,
-					   regaddr + NBANK(chip) - 1);
-		if (ret) {
-			dev_err(dev, "Failed to sync INT mask registers: %d\n",
-				ret);
-			return ret;
-		}
-	}
-
-	if (chip->driver_data & PCA_AW) {
-		regaddr = pca953x_recalc_addr(chip, AW95016A_IN_LATCH, 0);
-		ret = regcache_sync_region(chip->regmap, regaddr,
-					   regaddr + NBANK(chip) - 1);
-		if (ret) {
-			dev_err(dev, "Failed to sync INT latch registers: %d\n",
-				ret);
-			return ret;
-		}
-
-		regaddr = pca953x_recalc_addr(chip, AW95016A_INT_MASK, 0);
+	if (chip->driver_data & (PCA_PCAL | PCA_AW)) {
+		regaddr = pca953x_recalc_addr(chip, (chip->driver_data & PCA_AW) ? AW95016A_INT_MASK : PCAL953x_INT_MASK, 0);
 		ret = regcache_sync_region(chip->regmap, regaddr,
 					   regaddr + NBANK(chip) - 1);
 		if (ret) {

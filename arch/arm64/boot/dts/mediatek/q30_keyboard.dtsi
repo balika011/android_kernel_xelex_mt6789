@@ -1,4 +1,5 @@
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/gpio/gpio.h>
 
 &odm {
 	leds {
@@ -42,9 +43,9 @@
 	keypad_gpio: aw95016_ex@20 {
 		compatible = "awinic,aw95016a";
 		reg = <0x20>;
-		reset-gpio = <&pio 153 0>;
+		reset-gpio = <&pio 153 GPIO_ACTIVE_LOW>;
 		interrupt-parent = <&pio>;
-		interrupts = <4 IRQ_TYPE_EDGE_FALLING>;
+		interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
 		gpio-controller;
 		interrupt-controller;
 		#gpio-cells = <2>;
@@ -72,35 +73,35 @@
 		keypad,debounce-ms = <5>;
 		linux,keypad-no-autorepeat;
 		linux,keymap = <
-				MATRIX_KEY(2, 0, KEY_Q)
-				MATRIX_KEY(2, 1, KEY_W)
-				MATRIX_KEY(2, 2, KEY_E)
-				MATRIX_KEY(2, 3, KEY_R)
-				MATRIX_KEY(2, 4, KEY_T)
-				MATRIX_KEY(3, 0, KEY_Y)
-				MATRIX_KEY(3, 1, KEY_U)
-				MATRIX_KEY(3, 2, KEY_I)
-				MATRIX_KEY(3, 3, KEY_O)
-				MATRIX_KEY(3, 4, KEY_P)
-				MATRIX_KEY(1, 0, KEY_A)
-				MATRIX_KEY(1, 1, KEY_S)
-				MATRIX_KEY(1, 2, KEY_D)
-				MATRIX_KEY(1, 3, KEY_F)
-				MATRIX_KEY(1, 4, KEY_G)
-				MATRIX_KEY(4, 0, KEY_H)
-				MATRIX_KEY(4, 1, KEY_J)
-				MATRIX_KEY(4, 2, KEY_K)
-				MATRIX_KEY(4, 3, KEY_L)
-				MATRIX_KEY(4, 4, KEY_BACKSPACE)
-				MATRIX_KEY(0, 0, KEY_Z)
-				MATRIX_KEY(0, 1, KEY_X)
-				MATRIX_KEY(0, 2, KEY_C)
-				MATRIX_KEY(0, 3, KEY_V)
-				MATRIX_KEY(0, 4, KEY_SPACE)
-				MATRIX_KEY(5, 1, KEY_B)
-				MATRIX_KEY(5, 2, KEY_N)
-				MATRIX_KEY(5, 3, KEY_M)
-				MATRIX_KEY(5, 4, KEY_ENTER)
-			>;
+			MATRIX_KEY(2, 0, KEY_Q)
+			MATRIX_KEY(2, 1, KEY_W)
+			MATRIX_KEY(2, 2, KEY_E)
+			MATRIX_KEY(2, 3, KEY_R)
+			MATRIX_KEY(2, 4, KEY_T)
+			MATRIX_KEY(3, 0, KEY_Y)
+			MATRIX_KEY(3, 1, KEY_U)
+			MATRIX_KEY(3, 2, KEY_I)
+			MATRIX_KEY(3, 3, KEY_O)
+			MATRIX_KEY(3, 4, KEY_P)
+			MATRIX_KEY(1, 0, KEY_A)
+			MATRIX_KEY(1, 1, KEY_S)
+			MATRIX_KEY(1, 2, KEY_D)
+			MATRIX_KEY(1, 3, KEY_F)
+			MATRIX_KEY(1, 4, KEY_G)
+			MATRIX_KEY(4, 0, KEY_H)
+			MATRIX_KEY(4, 1, KEY_J)
+			MATRIX_KEY(4, 2, KEY_K)
+			MATRIX_KEY(4, 3, KEY_L)
+			MATRIX_KEY(4, 4, KEY_BACKSPACE)
+			MATRIX_KEY(0, 0, KEY_Z)
+			MATRIX_KEY(0, 1, KEY_X)
+			MATRIX_KEY(0, 2, KEY_C)
+			MATRIX_KEY(0, 3, KEY_V)
+			MATRIX_KEY(0, 4, KEY_SPACE)
+			MATRIX_KEY(5, 1, KEY_B)
+			MATRIX_KEY(5, 2, KEY_N)
+			MATRIX_KEY(5, 3, KEY_M)
+			MATRIX_KEY(5, 4, KEY_ENTER)
+		>;
 	};
 };
